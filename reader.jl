@@ -343,7 +343,6 @@ This is tricky because you have to evaluate the type symbol.
 Also, :: can only occur once inside the symbol. Any more times and this will
 throw an error.
 
-TODO - sanitizing
 Special symbols: clojure allows more than julia is capable of handling.
 eg: *+?!-_': (: has to be non-repeating.)
 of these, support for ! and _ comes out of the box.
@@ -380,8 +379,10 @@ This might be nice for situations where you're going to only macroexpand,
 since it avoids unicode headaches. It would suck if you actually had to
 go read the Julia code afterwards though. ASCII only mode is only useful if
 you need ASCII compatability for some external reason.
+
+Of course, adding sanitizing means we have to also know when we're dealing with
+operators and make sure to exclude them from the sanitization process.
 """
-DEBUG = true
 function readsym(form, unicode=true)
   # Operators
   validops = string("^(?:",
@@ -416,6 +417,11 @@ function readsym(form, unicode=true)
     str = replace(str, "+" ,"_p")
     str = replace(str, "-" ,"_d")
     str = replace(str, "'" ,"_a")
+  end
+
+  # symbol must begin with a -,_,or a-zA-Z character.
+  if match(r"^(?:(?:[-_][a-zA-Z])|[a-zA-Z])", form) == nothing
+    throw InvalidTokenError(0,0,form)
   end
 
   # extract type
