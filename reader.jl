@@ -158,7 +158,7 @@ function parsesexp(str::AbstractString)
     end
 
     # Only one of these will be true at one time
-    if c == '"' && (i == 1 || str[i-1] != '\\')
+    if !in_comment && c == '"' && (i == 1 || str[i-1] != '\\')
       in_str = !in_str
       # if we just started a string, end the previous word
       if in_str
@@ -214,8 +214,7 @@ function parsesexp(str::AbstractString)
   # close paren that is just an atom, and we should drop that into the
   # sexpr too.
   if length(word) > 0
-    endword(sexp, lineno, colno, word)
-    word = ""
+    word = endword(sexp, lineno, colno, word)
   end
 
   # basic context closing error checking
@@ -255,6 +254,16 @@ error reporting actually makes sense.
 function read(sexp)
   if isa(sexp, Array)
     # Special forms
+
+    # and/&& (julia makes these special forms, not function calls...)
+    if sexp[1] in ("&&", "and")
+      return Expr(:&&, map(read, sexp[2:end])...)
+    end
+
+    ## or/|| (julia makes these special forms too.)
+    if sexp[1] in ("||", "or")
+      return Expr(:||, map(read, sexp[2:end])...)
+    end
 
     # def (variable assignment)
     if sexp[1] == "def"
@@ -309,8 +318,8 @@ function read(sexp)
       return QuoteNode(read(sexp[2]))
     end
 
-    # fn
-    if sexp[] == "fn"
+    # defn/fn (the same thing in julia)
+    if sexp[1] == "fn" || sexp[1] == "defn"
       if isa(sexp[2], Array)
         # (fn [x] body)
         return Expr(:function, Expr(:tuple, map(readsym, sexp[2][2:end])...),
@@ -359,7 +368,7 @@ function read(sexp)
 
     # dot call form -
     if sexp[1][1] == '.'
-      return Expr(:call, Expr(:., readsym(sexp[2]),
+      return Expr(:call, Expr(:., read(sexp[2]),
                           QuoteNode(readsym(sexp[1][2:end]))),
                   map(read, sexp[3:end])...)
     end
