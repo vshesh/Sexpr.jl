@@ -176,13 +176,16 @@ function parsesexp(str::AbstractString)
     if !in_str && !in_comment
       if c == ',' continue end
       if c == '('
+        word = endword(sexp, lineno, colno, word)
         push!(sexp, [])
         push!(levels, c)
       elseif c == '['
+        word = endword(sexp, lineno, colno, word)
         push!(sexp, [])
         push!(sexp[end], VECID)
         push!(levels, c)
       elseif c == '{'
+        word = endword(sexp, lineno, colno, word)
         push!(sexp, [])
         push!(sexp[end], DICTID)
         push!(levels, c)
@@ -252,13 +255,74 @@ error reporting actually makes sense.
 function read(sexp)
   if isa(sexp, Array)
     # Special forms
-    # def
+
+    # def (variable assignment)
+    if sexp[1] == "def"
+      if length(sexp) != 3
+        throw(InvalidFormCountError(0,0,"def",sexp,
+                                        "3 forms", "$(length(sexp))"))
+      end
+      return Expr(:(=), readsym(sexp[2]), read(sexp[3]))
+    end
 
     # if
+    if sexp[1] == "if"
+      if !(length(sexp) in Int64[3,4])
+        throw(InvalidFormCountError(0,0,"if",sexp,
+                                    "3 or 4 forms", "$(length(sexp))"))
+      end
+      # there's no "block" here because we only deal with ternary if.
+      # Ie. (if true 0 1) -> :(true ? 0 : 1) in Julia.
+
+      # can optionally have else
+      if length(sexp) == 3
+        return Expr(:if, read(sexp[2]), read(sexp[3]))
+      else
+        return Expr(:if, read(sexp[2]), read(sexp[3]), read(sexp[4]))
+      end
+    end
+
     # do
+    if sexp[1] == "do"
+      return Expr(:block, map(read, sexp[2:end])...)
+    end
+
     # let
+    if sexp[1] == "let"
+      if length(sexp) < 3
+        throw(InvalidFormCountError(0,0,"let",sexp,
+                                    "at least 3 forms","$(length(sexp))"))
+      end
+      # looks like (let [vars] body), but julia does it backwards.
+      return Expr(:let, Expr(:block, map(read, sexp[3:end])...),
+                  map(x->Expr(:(=), readsym(x[1]), read(x[2])),
+                      partition(2, sexp[2][2:end]))...)
+    end
+
     # quote
+    if sexp[1] == "quote"
+      if length(sexp) != 2
+        # can only quote one form at a time.
+        throw(InvalidFormCountError(0,0,"quote",sexp,
+                                    "2 forms", "$(length(sexp))"))
+      end
+      return QuoteNode(read(sexp[2]))
+    end
+
     # fn
+    if sexp[] == "fn"
+      if isa(sexp[2], Array)
+        # (fn [x] body)
+        return Expr(:function, Expr(:tuple, map(readsym, sexp[2][2:end])...),
+                    Expr(:block, map(read, sexp[3:end])...))
+      else
+        # (fn name [x] body)
+        return Expr(:function, Expr(:call, readsym(sexp[2]),
+                                    map(readsym, sexp[3][2:end])...),
+                    Expr(:block, map(read, sexp[4:end])...))
+      end
+    end
+
     # loop/recur? -> might do for instead as a special form
 
     # special julia-eque forms
@@ -287,10 +351,16 @@ function read(sexp)
       return Expr(:vect, map(read, sexp[2:end])...)
     end
 
+    # Julia special forms.
+    # typing assert form
+    if sexp[1] == "::"
+      return Expr(:(::), map(read, sexp[2:end])...)
+    end
+
     # dot call form -
     if sexp[1][1] == '.'
       return Expr(:call, Expr(:., readsym(sexp[2]),
-                          Expr(:quote, readsym(sexp[1][2:end]))),
+                          QuoteNode(readsym(sexp[1][2:end]))),
                   map(read, sexp[3:end])...)
     end
 
@@ -392,8 +462,6 @@ function readsym(form, unicode=true)
                     "|~|&|\\||\\\$|(?:>>)|(?:<<)|(?:>>>)",
                     # (comparison) ==, !=, <, >, <=, >=,
                     "|(?:==)|(?:!=)|<|>|(?:<=)|(?:>=)",
-                    # (syntax) ., ::
-                    "|\\.|(?:::)",
                     ")\$"
                     )
   if match(Regex(validops), form) != nothing
@@ -421,7 +489,7 @@ function readsym(form, unicode=true)
 
   # symbol must begin with a -,_,or a-zA-Z character.
   if match(r"^(?:(?:[-_][a-zA-Z])|[a-zA-Z])", form) == nothing
-    throw InvalidTokenError(0,0,form)
+    throw(InvalidTokenError(0,0,form))
   end
 
   # extract type
@@ -443,7 +511,7 @@ function readsym(form, unicode=true)
   parts = split(s, r"[./]")
   e = symbol(parts[end])
   for p in reverse(parts[1:end-1])
-    e = Expr(:., symbol(p), Expr(:quote, e))
+    e = Expr(:., symbol(p), QuoteNode(e))
   end
 
   if length(symtype) > 1
@@ -465,11 +533,11 @@ s-expression frontend.
 function readbuiltin(str)
 
   # equality is a single = in clojure, but == in julia.
-  if string == "=" return :(==) end
-  if string == "not" return :! end
-  if string == "not=" return :!= end
+  if str == "=" return :(==) end
+  if str == "not" return :! end
+  if str == "not=" return :!= end
 
-  if string == "mod" return :% end
+  if str == "mod" return :% end
 
   return nothing
 end
@@ -533,14 +601,12 @@ end
 
 
 if length(ARGS) > 0 && ARGS[1] == "--run"
-  using Reader
-  eval(:(
-         for form in Reader.parsesexp(readall(STDIN))
-           print(form)
-           print(" => ")
-           println(Reader.read(form))
-         end
-  ))
+  eval(:(using Reader))
+  for form in Reader.parsesexp(readall(STDIN))
+    print(form)
+    print(" => ")
+    println(Reader.read(form))
+  end
 end
 
 
