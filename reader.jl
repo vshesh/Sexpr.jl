@@ -1,7 +1,7 @@
 module Reader
 
 export VECID, DICTID
-export parsesexp, extractsexp
+export parsesexp, extractsexp, read
 export UnclosedError, MismatchedError, ExtraError, InvalidTokenError
 
 VECID = "::__vec__::"
@@ -211,7 +211,7 @@ function parsesexp(str::AbstractString)
   # close paren that is just an atom, and we should drop that into the
   # sexpr too.
   if length(word) > 0
-    push!(sexp[end], word)
+    endword(sexp, lineno, colno, word)
     word = ""
   end
 
@@ -228,6 +228,10 @@ function parsesexp(str::AbstractString)
 end
 
 
+"""
+Converts a rich dict based representation of a sexp into an actual
+Expression object.
+"""
 function extractsexp(sexp::Dict{Symbol,Any})
   expr = sexp[:sexp]
   if isa(expr, Array{Any})
@@ -238,9 +242,12 @@ function extractsexp(sexp::Dict{Symbol,Any})
 end
 
 """ only works if length(xs) % n == 0"""
-partition(n,x) = [{x[i:min(i+n-1,length(x))]} for i in 1:n:length(x)]
+partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
+
 """
 
+TODO: Add a second sexp-like object that has line numbers in it, so that
+error reporting actually makes sense.
 """
 function read(sexp)
   if isa(sexp, Array)
@@ -265,22 +272,31 @@ function read(sexp)
     if sexp[1] == DICTID
       # MUST have pairs of operations
       if length(sexp) % 2 != 1
-        # note that (:__dict__, pair of operations) will always be an
+        # note that (DICTID, pair of operations) will always be an
         # odd number of forms
         throw(InvalidFormCountError(0,0,"map",sexp,
                                     "even number of forms",
                                     "$(length(sexp))"))
       end
-      return Expr(:call, :Dict, )
+      return Expr(:call, :Dict,
+                  map(x -> Expr(:(=>), x...),
+                      partition(2, map(read,sexp[2:end])))...)
     end
     # vector
     if sexp[1] == VECID
       return Expr(:vect, map(read, sexp[2:end])...)
     end
 
+    # dot call form -
+    if sexp[1][1] == '.'
+      return Expr(:call, Expr(:., readsym(sexp[2]),
+                          Expr(:quote, readsym(sexp[1][2:end]))),
+                  map(read, sexp[3:end])...)
+    end
+
     # if none of these things, it's just a regular function call.
     # in julia syntax, this is
-    return Expr(:call, symbol(sexp[1]), map(read, sexp[2:end])...)
+    return Expr(:call, readsym(sexp[1]), map(read, sexp[2:end])...)
   else
     # Special reader macros
     # ' (quote)
@@ -288,10 +304,6 @@ function read(sexp)
 
     # Atoms
 
-    # nil -> nothing
-    # true -> true
-    # false -> false
-    # [0-9].* -> some kind of number
     # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
     # [symbol]* -> symbol (variable in julia, like :symbol)
     if sexp == "nil"
@@ -303,16 +315,180 @@ function read(sexp)
     elseif isdigit(sexp[1]) || (sexp[1] == '-' && isdigit(sexp[2]))
       return readnumber(sexp)
     elseif sexp[1] == '"'
-      #this should just strip the '"' characters at both ends
-      return sexp[2:end-1]
-
+      #this should strip the '"' characters at both ends
+      return unescape(sexp[2:end-1])
+    elseif sexp[1] == '\\' && length(sexp) > 1
+      return readchar(sexp)
+    elseif sexp[1] == ':'
+      return symbol(sexp[2:end])
     else
-      # this is an unrecognized literal, error
-      throw(InvalidTokenError(0,0,sexp))
+      # the base option is that we're dealing with a symbol.
+      return readsym(sexp)
     end
-
-    # if it starts with a digit, it MUST be a number, or it's an error
   end
+end
+
+
+"""
+The two special characters in a symbol are . and /
+They amount to the same thing in Julia, so all we have to do is
+split the string by those tokens and nest the "dot" form inside them.
+In fact, you can never recover a slash in a symbol, since it just gets coerced
+to a dot anyway. In general, s-expression julia shouldn't have any slashes
+to begin with - there's no concept of a "namespace".
+
+type support is done by allowing :: inside a symbol, eg
+x::Int -> Expr(:(::), x, Int)
+This is tricky because you have to evaluate the type symbol.
+Also, :: can only occur once inside the symbol. Any more times and this will
+throw an error.
+
+TODO - sanitizing
+Special symbols: clojure allows more than julia is capable of handling.
+eg: *+?!-_': (: has to be non-repeating.)
+of these, support for ! and _ comes out of the box.
+We need a isomorphism from some clojure name to a julia name.
+Of course, doing so would lead to some pretty ugly symbol names, so there's
+a tradeoff between something readable and something that's backwards
+transformable.
+One thing to note is that julia allows unicode characters, so those might be
+necessary to delineate special marks in the clojure name.
+In fact, that makes for a pretty easy translation, using greek letters,
+but it makes it an EXTREME pain in the ass to translate back to ascii clojure
+type symbols (since unicode boundaries are not clean the way ASCII is).
+
+* !,_ are given
+
+* * -> \degree °
+* ? -> \Elzglst ʔ
+* + -> \textdoublepipe ǂ
+* - -> \Xi (fancy looking bordered -, basically) Ξ
+* ' -> \prime ′ (Who uses a quote in the name of a variable?)
+
+Alternatively, you could convert it to a messy escaped ASCII version, if
+desired.
+
+* ! is given
+* _ -> __ (needs to be escaped)
+* * -> _s
+* ? -> _q
+* + -> _p
+* - -> _d
+* ' -> _a
+
+This might be nice for situations where you're going to only macroexpand,
+since it avoids unicode headaches. It would suck if you actually had to
+go read the Julia code afterwards though. ASCII only mode is only useful if
+you need ASCII compatability for some external reason.
+"""
+DEBUG = true
+function readsym(form, unicode=true)
+  # Operators
+  validops = string("^(?:",
+                    #  (math) +, -, *, /, \, ^, %, //
+                    "\\+|-|\\*|/|\\\\|\\^|%|(?://)",
+                    #  (bitmath) ~, &, |, $, >>, <<, >>>
+                    "|~|&|\\||\\\$|(?:>>)|(?:<<)|(?:>>>)",
+                    # (comparison) ==, !=, <, >, <=, >=,
+                    "|(?:==)|(?:!=)|<|>|(?:<=)|(?:>=)",
+                    # (syntax) ., ::
+                    "|\\.|(?:::)",
+                    ")\$"
+                    )
+  if match(Regex(validops), form) != nothing
+    return symbol(form)
+  end
+
+  b = readbuiltin(form)
+  if b != nothing return b end
+
+  # replace the non-julia symbol characters.
+  if unicode
+    str = replace(form, "*", "°")
+    str = replace(str, "?", "ʔ")
+    str = replace(str, "+", "ǂ")
+    str = replace(str, "-", "Ξ")
+    str = replace(str, "'", "′")
+  else
+    str = replace(form, "_" ,"__")
+    str = replace(str, "*" ,"_s")
+    str = replace(str, "?" ,"_q")
+    str = replace(str, "+" ,"_p")
+    str = replace(str, "-" ,"_d")
+    str = replace(str, "'" ,"_a")
+  end
+
+  # extract type
+  symtype = split(str, "::")
+  # Note that this is a strict parsing thing.
+  # We could just ignore everything after the second :: and beyond in the
+  # symbol
+  if length(symtype) > 2
+    throw(InvalidTokenError(0,0,str))
+  end
+
+  s = symtype[1]
+  if length(symtype) > 1
+    t = symtype[2]
+  end
+
+  # now parse s for dots and slashes
+  # the dotted name is built in reverse.
+  parts = split(s, r"[./]")
+  e = symbol(parts[end])
+  for p in reverse(parts[1:end-1])
+    e = Expr(:., symbol(p), Expr(:quote, e))
+  end
+
+  if length(symtype) > 1
+    return Expr(:(::), e, eval(readsym(t)))
+  else
+    return e
+  end
+end
+
+"""
+Translates Clojure style builtins to Julia's builtins
+Note that Julia's proper builtins are still overshadowed and available, so
+even though Clojure only defines "str", "str" and "string" will both be
+available and do the same thing.
+
+BTW, this also means that all of Julia's builtins are available to the
+s-expression frontend.
+"""
+function readbuiltin(str)
+
+  # equality is a single = in clojure, but == in julia.
+  if string == "=" return :(==) end
+  if string == "not" return :! end
+  if string == "not=" return :!= end
+
+  if string == "mod" return :% end
+
+  return nothing
+end
+
+
+function unescape(str)
+  s = replace(str, "\\b", "\b")
+  s = replace(s, "\\n", "\n")
+  s = replace(s, "\\a", "\a")
+  s = replace(s, "\\t", "\t")
+  s = replace(s, "\\r", "\r")
+  s = replace(s, "\\f", "\f")
+  s = replace(s, "\\v", "\v")
+  s = replace(s, "\\'", "'")
+  s = replace(s, "\\\"", "\"")
+  s = replace(s, "\\\\", "\\")
+
+  # TODO add unicode support
+  # TODO add hex char support
+  # TODO add octal char support
+  s
+end
+
+function readchar(str)
+  unescape(str)[1]
 end
 
 function readnumber(str)
@@ -323,6 +499,7 @@ function readnumber(str)
     p = split(str,'r')
     try
       # it's possible to still have a malformatted number
+      # this is an int with a specified radix.
       parse(Int, p[1], parse(Int,p[2]))
     catch a
       if isa(a, ArgumentError)
@@ -343,23 +520,22 @@ function readnumber(str)
       end
     end
   else
-    throw(InvalidTokenError())
+    throw(InvalidTokenError(0,0,str))
   end
 end
-
 end
 
 
-
-
-
-
-
-
-
-
-
-
+if length(ARGS) > 0 && ARGS[1] == "--run"
+  using Reader
+  eval(:(
+         for form in Reader.parsesexp(readall(STDIN))
+           print(form)
+           print(" => ")
+           println(Reader.read(form))
+         end
+  ))
+end
 
 
 
