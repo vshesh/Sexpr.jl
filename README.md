@@ -21,7 +21,7 @@ take care of doing the rest of the code evaluation.
 
 ## Task List/Implementation Plan
 
-### Reader
+### Reader (`parsesexp` function in reader.jl)
 Takes in a file full of forms and returns an object (a list, probably) that
 contains the tree structure of the form.
 
@@ -145,7 +145,7 @@ have to do ["sexp"] each time on the children.
 It also makes tests a little harder to write. I have to extract the
 s-expression out of the dictionary.
 
-#### Error Handling
+#### Error Handling `done`
 
 The reader can't catch a lot of errors, but it should be able to catch
 
@@ -153,3 +153,117 @@ The reader can't catch a lot of errors, but it should be able to catch
   - made fancier by detecting which type of bracket was mismatched.
 * mismatched string delimiters `done`
   - multiline strings are allowed, so this is just a matter of checking whether in string context at the end of the parsing.
+
+
+
+### Analyzer (`read` function in reader.jl)
+
+#### LINE NUMBERS NOT DONE
+Will probably have to add this as a separate tree like structure called "meta"
+so read takes `read(sexp, meta)` instead of just an expression.
+That way all the errors can tell you where things screwed up.
+
+
+#### Atoms
+
+* true, false, nil `done`
+* numbers (int, float) `done`
+* basic strings `done`
+  * unescaping characters in strings `done, partially`
+  * dispatch strings (r"" s"" b"" etc)
+* basic char `done`
+  * unicode/octal/hex characters
+  * special characters \newline \backspace and so on
+* keywords `done`
+* symbols `done`
+  * there are a lot of finicky little problems with symbols, chances are there
+    are bugs somewhere in there.
+
+#### Literals
+
+* maps `done`
+* vectors `done`
+
+#### Special Forms
+
+##### if,do,let,fn/defn,quote,def `done`
+
+These are all pretty basic. You check for the head of the expression and
+then accordingly build the right Julia Expr object.
+It's gotten far enough to parse `testprograms/02-isolated-specialforms.clj`
+which contains a few tricks. It can probably even do more than that, since
+only if/let/fn/def are tested there.
+
+
+##### and/&& and or/|| `done`
+Julia makes these special forms.
+
+##### . and :: `done`
+. call form (i.e `(.x s)` -> `s.x()`) and :: type form `(:: x Int ) -> x::Int`.
+Note that symbol reading allows you to just do `x::Int` directly and it will
+be parsed the right way as well.
+
+Note that the type thing only works at function binding sites. Then again,
+that makes sense - there's nowhere else that you need to declare types of things
+anyway.
+
+##### docstrings
+
+In a `def...` type form only, eg `def`, `defn`, `deftype` etc.
+
+Can look like:
+```clojure
+(defn f
+  """ docstring goes here
+  """
+  [x] x)
+
+(defn f [x]
+  """ docstring goes here """
+  x)
+```
+
+##### Replicating comments/whitespace across files
+
+Right now, you get a strict two blank lines in between definitions.
+You also don't get any of the comments replicated.
+
+The comments part might be unworkable, since the comments are ignored completely
+when reading the program in. The only way around this is to define a special
+COMMENTID and then read the comment string and output that.
+
+##### Multi Arity Functions
+
+In Julia you can already do this by defining a function twice.
+Combined with the ability to define types, I'm not so worried about this one.
+However, technically I should also support the
+
+```clojure
+(def f
+  ([x] 1)
+  ([x y] 2))
+```
+
+syntax. Julia's function dipatch is actually a lot more comprehensive than even
+Clojure's rather lenient version, since it dispatches based on all arguments
+(I suppose only workable because it's compiled.).
+
+##### Deftype
+
+Julia's type system is more like a struct. This shouldn't be hard to do
+as a special form, especially since you can define types.
+
+```clojure
+(deftype X [Y]
+  a::Int
+  b::AbstractString)
+```
+becomes
+
+```julia
+type X <: Y
+  a::Int
+  b::AbstractString
+end
+```
+

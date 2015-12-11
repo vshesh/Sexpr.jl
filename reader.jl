@@ -27,7 +27,7 @@ type MismatchedError <: Exception
 end
 Base.showerror(io::IO, e::MismatchedError) =
   print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno) found mismatch, ",
-            "expected to close $(e.expected), found $(e.found) instead")
+        "expected to close $(e.expected), found $(e.found) instead")
 
 type UnclosedError <: Exception
   lineno::Int
@@ -45,7 +45,7 @@ type InvalidTokenError <: Exception
 end
 Base.showerror(io::IO, e::InvalidTokenError) =
   print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno), ",
-            "invalid token found: $(e.token)")
+        "invalid token found: $(e.token)")
 
 type InvalidFormCountError <: Exception
   lineno::Int
@@ -57,7 +57,7 @@ type InvalidFormCountError <: Exception
 end
 Base.showerror(io::IO, e::InvalidFormCountError) =
   print(io, "At line $(lineno):$(colno), $(e.kind) should have $(e.expected), ",
-            "found $(e.found) instead: $(e.form)")
+        "found $(e.found) instead: $(e.form)")
 
 type WrappedException <: Exception
   lineno::Int
@@ -269,7 +269,7 @@ function read(sexp)
     if sexp[1] == "def"
       if length(sexp) != 3
         throw(InvalidFormCountError(0,0,"def",sexp,
-                                        "3 forms", "$(length(sexp))"))
+                                    "3 forms", "$(length(sexp))"))
       end
       return Expr(:(=), readsym(sexp[2]), read(sexp[3]))
     end
@@ -303,7 +303,10 @@ function read(sexp)
                                     "at least 3 forms","$(length(sexp))"))
       end
       # looks like (let [vars] body), but julia does it backwards.
-      return Expr(:let, Expr(:block, map(read, sexp[3:end])...),
+      return Expr(:let,
+                  # body goes here
+                  Expr(:block, map(read, sexp[3:end])...),
+                  # bindings go here
                   map(x->Expr(:(=), readsym(x[1]), read(x[2])),
                       partition(2, sexp[2][2:end]))...)
     end
@@ -318,12 +321,19 @@ function read(sexp)
       return QuoteNode(read(sexp[2]))
     end
 
-    # defn/fn (the same thing in julia)
-    if sexp[1] == "fn" || sexp[1] == "defn"
+    # fn (the same thing in julia)
+    if sexp[1] == "fn"
       if isa(sexp[2], Array)
         # (fn [x] body)
-        return Expr(:function, Expr(:tuple, map(readsym, sexp[2][2:end])...),
-                    Expr(:block, map(read, sexp[3:end])...))
+        # small optimization. If it's an anonymous function with only one
+        # term in the body, replace with -> syntax.
+        if length(sexp) == 3
+          return Expr(:->, Expr(:tuple, map(readsym, sexp[2][2:end])...),
+                      read(sexp[3]))
+        else
+          return Expr(:function, Expr(:tuple, map(readsym, sexp[2][2:end])...),
+                      Expr(:block, map(read, sexp[3:end])...))
+        end
       else
         # (fn name [x] body)
         return Expr(:function, Expr(:call, readsym(sexp[2]),
@@ -331,6 +341,20 @@ function read(sexp)
                     Expr(:block, map(read, sexp[4:end])...))
       end
     end
+
+    # defn, in julia doing `function x(y) y end` defines it too, so it's just
+    # the last part from above
+    if sexp[1] == "defn"
+      if length(sexp) < 4
+        throw(InvalidFormCountError(0,0,sexp,
+                                    "at least 4 forms","$(length(sexp))"))
+      end
+      # (defn name [x] body)
+      return Expr(:function, Expr(:call, readsym(sexp[2]),
+                                  map(readsym, sexp[3][2:end])...),
+                  Expr(:block, map(read, sexp[4:end])...))
+    end
+
 
     # loop/recur? -> might do for instead as a special form
 
@@ -368,9 +392,19 @@ function read(sexp)
 
     # dot call form -
     if sexp[1][1] == '.'
-      return Expr(:call, Expr(:., read(sexp[2]),
-                          QuoteNode(readsym(sexp[1][2:end]))),
-                  map(read, sexp[3:end])...)
+      # first, if it's like (.x y), this is y.x()
+      if length(sexp[1]) > 1
+        return Expr(:call, Expr(:., read(sexp[2]),
+                                QuoteNode(readsym(sexp[1][2:end]))),
+                    map(read, sexp[3:end])...)
+        # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
+      else
+        e = readsym(sexp[end])
+        for sym in reverse(sexp[2:end-1])
+          e = Expr(:., readsym(sym), QuoteNode(e))
+        end
+        return e
+      end
     end
 
     # if none of these things, it's just a regular function call.
@@ -399,6 +433,9 @@ function read(sexp)
     elseif sexp[1] == '\\' && length(sexp) > 1
       return readchar(sexp)
     elseif sexp[1] == ':'
+      if contains(sexp, ".") || contains(sexp, "/")
+        throw(InvalidTokenError(0,0,sexp))
+      end
       return symbol(sexp[2:end])
     else
       # the base option is that we're dealing with a symbol.
@@ -440,7 +477,7 @@ type symbols (since unicode boundaries are not clean the way ASCII is).
 * * -> \degree °
 * ? -> \Elzglst ʔ
 * + -> \textdoublepipe ǂ
-* - -> \Xi (fancy looking bordered -, basically) Ξ
+* - -> \div (fancy looking bordered -, basically) ÷
 * ' -> \prime ′ (Who uses a quote in the name of a variable?)
 
 Alternatively, you could convert it to a messy escaped ASCII version, if
@@ -485,7 +522,7 @@ function readsym(form, unicode=true)
     str = replace(form, "*", "°")
     str = replace(str, "?", "ʔ")
     str = replace(str, "+", "ǂ")
-    str = replace(str, "-", "Ξ")
+    str = replace(str, "-", "÷")
     str = replace(str, "'", "′")
   else
     str = replace(form, "_" ,"__")
@@ -531,7 +568,10 @@ function readsym(form, unicode=true)
 end
 
 """
-Translates Clojure style builtins to Julia's builtins
+Translates Clojure style builtins to Julia's builtins.
+This is also possible to do in s-expression syntax itself rather than building
+it into the compiler. The difference is that there is a need for the
+
 Note that Julia's proper builtins are still overshadowed and available, so
 even though Clojure only defines "str", "str" and "string" will both be
 available and do the same thing.
@@ -547,6 +587,9 @@ function readbuiltin(str)
   if str == "not=" return :!= end
 
   if str == "mod" return :% end
+  # clojure has no explicit operator for exponentiation.
+  # ** doesn't conflict with metadata, whereas ^ does.
+  if str == "**" return :^ end
 
   return nothing
 end
@@ -606,15 +649,16 @@ function readnumber(str)
     throw(InvalidTokenError(0,0,str))
   end
 end
-end
+
+end #module
 
 
 if length(ARGS) > 0 && ARGS[1] == "--run"
   eval(:(using Reader))
   for form in Reader.parsesexp(readall(STDIN))
-    print(form)
-    print(" => ")
     println(Reader.read(form))
+    println()
+    println()
   end
 end
 

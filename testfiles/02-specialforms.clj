@@ -12,7 +12,8 @@ Clojure Special Forms
 (if true 1) ||| Any["if", "true", "1"] ||| Expr(:if, true, 1)
 (quote x) ||| Any["quote", "x"] ||| :(:x)
 (def x 1) ||| Any["def", "x", "1"] ||| :(x = 1)
-(fn [x] x) ||| Any["fn", Any["::__vec__::", "x"], "x"] ||| :(function(x) x end)
+; function literals ALWAYS have a block in the AST, so we have to Explicitly describe the s-expr.
+(fn [x] x) ||| Any["fn", Any["::__vec__::", "x"], "x"] ||| Expr(:->, Expr(:tuple, :x), :x)
 (fn f [x] x) ||| Any["fn", "f", Any["::__vec__::", "x"], "x"] ||| :(function f(x) x end)
 (let [x 1] x) ||| Any["let", Any["::__vec__::", "x", "1"], "x"] ||| :(let x=1; x end)
 (let [x 1 y 2] (+ x y)) ||| Any["let", Any["::__vec__::", "x", "1", "y", "2"], Any["+","x","y"]] ||| :(let x=1,y=2; x+y end)
