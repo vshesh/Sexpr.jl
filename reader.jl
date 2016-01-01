@@ -353,6 +353,7 @@ function read(sexp)
       return Expr(:function, Expr(:call, readsym(sexp[2]),
                                   map(readsym, sexp[3][2:end])...),
                   Expr(:block, map(read, sexp[4:end])...))
+      # TODO add ability to deal with docstrings.
     end
 
 

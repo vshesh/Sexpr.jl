@@ -19,6 +19,33 @@ everything, but the macro system sucks.
 Effectively, this is just the **reader** portion of implementing a lisp - I
 take care of doing the rest of the code evaluation.
 
+## Syntax Documentation
+
+### Atoms
+
+#### Nil
+
+`nil` translates to julia's `nothing`. They work exactly the same.
+
+#### Booleans
+
+`true` -> `true` and `false` -> `false`. No surprises at all there
+
+#### Numbers
+
+Julia is very specific about numbers, but it's also pretty flexible about them.
+In general, constants compile to either `Int64` or `Float64` types.
+
+#### Characters
+
+anything starting with a `\\` is a character.
+The usual escapes, `\n \t \v \b \\` escape to what you expect.
+
+As of now, there's no way to specify an ACTUAL 'n' character, but that will
+be fixed soon. If you need just `n` do `"n"` instead.
+
+####
+
 ## Task List/Implementation Plan
 
 ### Reader (`parsesexp` function in reader.jl)
