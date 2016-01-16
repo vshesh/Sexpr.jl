@@ -1,5 +1,7 @@
 module Reader
 
+using .Errors
+
 export VECID, DICTID
 export parsesexp, extractsexp, read
 export UnclosedError, MismatchedError, ExtraError, InvalidTokenError
@@ -7,66 +9,6 @@ export UnclosedError, MismatchedError, ExtraError, InvalidTokenError
 VECID = "::__vec__::"
 DICTID = "::__dict__::"
 PARENS = Dict(')' => '(', ']' => '[', '}' => '{')
-
-"""
-Reader error types.
-"""
-type ExtraError <: Exception
-  lineno::Int
-  colno::Int
-  c::Char
-end
-Base.showerror(io::IO, e::ExtraError) =
-  print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno), extra $(e.c) found.")
-
-type MismatchedError <: Exception
-  lineno::Int
-  colno::Int
-  expected::Char
-  found::Char
-end
-Base.showerror(io::IO, e::MismatchedError) =
-  print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno) found mismatch, ",
-        "expected to close $(e.expected), found $(e.found) instead")
-
-type UnclosedError <: Exception
-  lineno::Int
-  colno::Int
-  c::Char
-end
-Base.showerror(io::IO, e::UnclosedError) =
-  print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno) found unclosed $(e.c)")
-
-# If someone types garbage as a symbol, this error will come up.
-type InvalidTokenError <: Exception
-  lineno::Int
-  colno::Int
-  token::AbstractString
-end
-Base.showerror(io::IO, e::InvalidTokenError) =
-  print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno), ",
-        "invalid token found: $(e.token)")
-
-type InvalidFormCountError <: Exception
-  lineno::Int
-  colno::Int
-  kind::AbstractString
-  form::AbstractString
-  expected::AbstractString
-  found::AbstractString
-end
-Base.showerror(io::IO, e::InvalidFormCountError) =
-  print(io, "At line $(lineno):$(colno), $(e.kind) should have $(e.expected), ",
-        "found $(e.found) instead: $(e.form)")
-
-type WrappedException <: Exception
-  lineno::Int
-  colno::Int
-  e::Exception
-  message::AbstractString
-end
-Base.showerror(io::IO, e::WrappedException) =
-  print(io, "$(typeof(e)) at line $(lineno):$(colno): $(e.message)")
 
 """
 Checks to make sure the token is valid by Clojure standards.

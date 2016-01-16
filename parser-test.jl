@@ -1,9 +1,9 @@
-module ReaderTest
+module ParserTest
 
 using FactCheck
-include("Reader.jl")
-using .Reader
-
+include("parser.jl")
+using .Parser
+using .Parser.Errors
 """
 So far this module contains only the most basic of tests for the reader.
 
@@ -56,7 +56,7 @@ atoms = [
   "\"3X]8n]Gi*A@Pn:O\"","\"FG4=Dm78**0Be~0s!\\\"\"","\"vy;_ajA9!D{0uR//\"",
   ]
 
-facts("Reader.parsesexp(atom) --> [atom]") do
+facts("Parser.parsesexp(atom) --> [atom]") do
   for a in atoms
     @fact parsesexp(a) --> Any[a]
   end
@@ -67,14 +67,14 @@ facts("Reader.parsesexp(atom) --> [atom]") do
 end
 
 # Singleton List Literal
-facts("Reader.parsesexp(\"(atom)\") --> [[atom]] ") do
+facts("Parser.parsesexp(\"(atom)\") --> [[atom]] ") do
   for a in atoms
     @fact parsesexp(string("(",a,")")) --> Any[Any[a]]
   end
 end
 
 # Singleton Vector Literal
-facts("Reader.parsesexp(\"[atom]\") --> [[VECID, atom]] ") do
+facts("Parser.parsesexp(\"[atom]\") --> [[VECID, atom]] ") do
   for a in atoms
     @fact parsesexp(string("[",a,"]")) --> Any[Any[VECID, a]]
   end
@@ -82,7 +82,7 @@ end
 
 # Singleton Map Literal (NOTE THIS IS NOT A LEGAL FORM,
 #                        either you need `#` for a set, or a pair of forms)
-facts("Reader.parsesexp(\"{atom}\") --> [[DICTID, atom]] ") do
+facts("Parser.parsesexp(\"{atom}\") --> [[DICTID, atom]] ") do
   for a in atoms
     @fact parsesexp(string("{",a,"}")) --> Any[Any[DICTID, a]]
   end
@@ -125,7 +125,7 @@ stringerrors = [
 # missing parens of some kind in these forms.
 notenoughparens = [
   "(", "[", "{", "(()", "(()()(())", "(((((((", "[[[[[[]]]]] [[]] [[]] ",
-  "{{{{ }} {{}}", "{{}} {{", "((\")))()"
+  "{{{{ }} {{}}", "{{}} {{"
   ]
 toomanyparens = [
   ")", "]", "}", "((()))}", "(([[[[]]]])))", ")))(((())))"
@@ -137,15 +137,15 @@ mismatchedparens = [
 
 facts("Basic reader error checking") do
   for s in notenoughparens
-    @fact_throws UnclosedError parsesexp(s)
+    @fact_throws UnclosedError parsesexp(s) "$s"
   end
 
   for s in toomanyparens
-    @fact_throws ExtraError parsesexp(s)
+    @fact_throws ExtraError parsesexp(s) "$s"
   end
 
   for s in mismatchedparens
-    @fact_throws MismatchedError parsesexp(s)
+    @fact_throws MismatchedError parsesexp(s) "$s"
   end
 end
 
