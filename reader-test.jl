@@ -1,9 +1,17 @@
 module ReaderTest
 
 using FactCheck
+include("parser.jl")
+using .Parser
 include("reader.jl")
 using .Reader
 
+"""
+Used to remove LineNumberNodes (which are just metadata)
+from expressions that are created in julia. When manually making the same
+expression, the LineNumberNodes don't show up.
+
+"""
 function stripmeta(expr)
   if isa(expr, Expr)
     return Expr(expr.head, stripmeta(expr.args)...)
@@ -17,9 +25,9 @@ end
 
 function test(line)
   form, sexp, expr = split(line, " ||| ")
-  @fact(Reader.parsesexp(form)[1] --> eval(parse(sexp)),
+  @fact(Parser.parsesexp(form, false)[1] --> eval(parse(sexp)),
         "expected $form -> $sexp")
-  @fact(Reader.read(Reader.parsesexp(form)[1]) --> stripmeta(eval(parse(expr))),
+  @fact(Reader.read(Parser.parsesexp(form, false)[1]) --> stripmeta(eval(parse(expr))),
         "expected $form -> $expr")
 end
 

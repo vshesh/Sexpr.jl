@@ -10,7 +10,7 @@ Julia Specific Special Forms
 Clojure Special Forms
 (if true 1 0) ||| Any["if", "true", "1", "0"] ||| :(true ? 1 : 0)
 (if true 1) ||| Any["if", "true", "1"] ||| Expr(:if, true, 1)
-(quote x) ||| Any["quote", "x"] ||| :(:x)
+(quote x) ||| Any["quote", "x"] ||| Expr(:quote, :x)
 (def x 1) ||| Any["def", "x", "1"] ||| :(x = 1)
 ; function literals ALWAYS have a block in the AST, so we have to Explicitly describe the s-expr.
 (fn [x] x) ||| Any["fn", Any["::__vec__::", "x"], "x"] ||| Expr(:->, Expr(:tuple, :x), :x)

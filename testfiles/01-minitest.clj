@@ -17,7 +17,9 @@ Math operators
 (% 2 3) ||| Any["%", "2", "3"] ||| :(2 % 3)
 
 Bitmath operators
-(~ 1) ||| Any["~", "1"] ||| :(~1)
+;; At some point these need to be changed to clojure's actual bit operations.
+;; eg bit-not bit-or bit-and etc.
+;(~ 1) ||| Any["~", "1"] ||| :(~1)
 (& 1 0) ||| Any["&", "1", "0"] ||| :(1 & 0)
 (| 1 0) ||| Any["|", "1", "0"] ||| :(1 | 0)
 ($ 1 0) ||| Any["\$", "1", "0"] ||| :(1 $ 0)

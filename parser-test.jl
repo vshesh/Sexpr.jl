@@ -58,25 +58,25 @@ atoms = [
 
 facts("Parser.parsesexp(atom) --> [atom]") do
   for a in atoms
-    @fact parsesexp(a) --> Any[a]
+    @fact parsesexp(a, false) --> Any[a]
   end
 
   # Special 1->many atom split cases
-  @fact parsesexp("\\c\\d") --> Any["\\c","\\d"]
-  @fact parsesexp("\"x\"\"y\"") --> Any["\"x\"", "\"y\""]
+  @fact parsesexp("\\c\\d", false) --> Any["\\c","\\d"]
+  @fact parsesexp("\"x\"\"y\"", false) --> Any["\"x\"", "\"y\""]
 end
 
 # Singleton List Literal
 facts("Parser.parsesexp(\"(atom)\") --> [[atom]] ") do
   for a in atoms
-    @fact parsesexp(string("(",a,")")) --> Any[Any[a]]
+    @fact parsesexp(string("(",a,")"), false) --> Any[Any[a]]
   end
 end
 
 # Singleton Vector Literal
 facts("Parser.parsesexp(\"[atom]\") --> [[VECID, atom]] ") do
   for a in atoms
-    @fact parsesexp(string("[",a,"]")) --> Any[Any[VECID, a]]
+    @fact parsesexp(string("[",a,"]"), false) --> Any[Any[VECID, a]]
   end
 end
 
@@ -84,16 +84,16 @@ end
 #                        either you need `#` for a set, or a pair of forms)
 facts("Parser.parsesexp(\"{atom}\") --> [[DICTID, atom]] ") do
   for a in atoms
-    @fact parsesexp(string("{",a,"}")) --> Any[Any[DICTID, a]]
+    @fact parsesexp(string("{",a,"}"), false) --> Any[Any[DICTID, a]]
   end
 end
 
 
 facts("Comments should be ignored") do
   # every ascii character
-  @fact parsesexp("; `1234567809-=~!@#\$%^*(&)_+;:qwertweurpiouy[]{}\\|asdfghjkl'\\\"zxcvbn,m./<>?") --> Any[]
-  @fact parsesexp("(defn identity ;[x] \n [x] x)") -->
-    {{"defn", "identity", {VECID, "x"},"x"}}
+  @fact parsesexp("; `1234567809-=~!@#\$%^*(&)_+;:qwertweurpiouy[]{}\\|asdfghjkl'\\\"zxcvbn,m./<>?", false) --> Any[]
+  @fact parsesexp("(defn identity ;[x] \n [x] x)", false) -->
+    Any[Any["defn", "identity", Any[VECID, "x"],"x"]]
   realprogram = """
   ; mithril-js html macro
   (defn test
@@ -103,10 +103,10 @@ facts("Comments should be ignored") do
     ([x & body] [x body]))
   ; keyword entities.
   """
-  @fact parsesexp(realprogram) -->
-    {{"defn", "test",
-      {{VECID, "x"}, "x"},
-      {{VECID, "x", "&", "body"}, {VECID, "x", "body"}}}}
+  @fact parsesexp(realprogram, false) -->
+    Any[Any["defn", "test",
+      Any[Any[VECID, "x"], "x"],
+      Any[Any[VECID, "x", "&", "body"], Any[VECID, "x", "body"]]]]
 end
 # situations in which the parser should give "unclosed string error"
 stringerrors = [
@@ -137,15 +137,15 @@ mismatchedparens = [
 
 facts("Basic reader error checking") do
   for s in notenoughparens
-    @fact_throws UnclosedError parsesexp(s) "$s"
+    @fact_throws UnclosedError parsesexp(s, false) "$s"
   end
 
   for s in toomanyparens
-    @fact_throws ExtraError parsesexp(s) "$s"
+    @fact_throws ExtraError parsesexp(s, false) "$s"
   end
 
   for s in mismatchedparens
-    @fact_throws MismatchedError parsesexp(s) "$s"
+    @fact_throws MismatchedError parsesexp(s, false) "$s"
   end
 end
 

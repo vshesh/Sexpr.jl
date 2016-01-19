@@ -109,7 +109,6 @@ function tokenize(str::AbstractString)
       in_comment = false
     end
 
-
     if !in_comment && !in_str
       if ismatch(r"[\s,]", string(c))
         # ignore whitespace and commas,
@@ -124,8 +123,13 @@ function tokenize(str::AbstractString)
         # this is by no means an efficient state machine.
         endword()
       end
-
-      if word in ("[", "]", "(", ")", "{", "}", "'", "`", "^", "~", "~@")
+      # ^ metadata forms are not recognized as of now.
+      # ^ maps to the exponentiation function instead.
+      if word in ("[", "]", "(", ")", "{", "}", "'", "`") ||
+        # ~ only counts if not followed by an @. (current character is the
+        # one after word)
+        (word == "~" && (i >= length(str) || str[i] != '@')) ||
+        word == "~@"
         #these are all recognized tokens, so we should end the word and add it.
         endword()
       end
@@ -163,10 +167,6 @@ function tokenize(str::AbstractString)
 end
 
 
-QUOTEID = "::__quote__::"
-QUASIQUOTEID = "::__quasiquote__::"
-UNQUOTEID = "::__unquote__::"
-UNQUOTESPLICEID = "::__unquotesplice__::"
 VECID = "::__vec__::"
 DICTID = "::__dict__::"
 
@@ -186,6 +186,10 @@ function parseform(tokens, meta, state) # -> form, meta, state
     throw(ExtraError(m..., '}'))
   elseif t == "{"
     parseparen(tokens, meta, s, "}")
+
+  elseif t in ("'", "`", "~", "~@")
+    nf, nmf, ns = parseform(tokens, meta, s)
+    Any[t, nf], Any[m, nmf], ns
   else
     # it's an atom.
     t,m,s
@@ -229,7 +233,7 @@ function parseparen(tokens, meta, state, close) # -> form, meta, state
   p, pm, next(tokens,s)[2]
 end
 
-function parsesexp(str)
+function parsesexp(str, withmeta=true)
   tokens,meta = tokenize(str)
   s = start(tokens)
   forms = []
@@ -239,13 +243,16 @@ function parsesexp(str)
     push!(forms, f)
     push!(metaforms, mf)
   end
-  forms
+  if withmeta
+    forms, metaforms
+  else
+    forms
+  end
 end
 
 end #module
 
-if length(ARGS) > 0 && (ARGS[1] == "--run" || ARGS[1] == "-r")
-  eval(:(using Tokenizer))
-  tokens, meta = Tokenizer.tokenize(readall(STDIN))
-  println(tokens)
-end
+# if length(ARGS) > 0 && (ARGS[1] == "--run" || ARGS[1] == "-r")
+#   eval(:(using .Parser))
+#   println(parsesexp(readall(STDIN)))
+# end

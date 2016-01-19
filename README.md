@@ -4,20 +4,28 @@
 
 Goal: Taking the syntax of clojure (or something close enough) and
 translating it to a julia `Expr` object. This shouldn't be
-hard to do since Julia has a nice syntax already set up for this purpose!
+hard to do since Julia has a nice syntax already set up for this purpose
+(the `Expr` objects)!
 
 Then, look into doing julia -> clojure syntax. This may not be the cleanest,
 since Julia's reader tends to aggressively wrap things in blocks (ie., `do`
-from clojure), but it should still work.
+from clojure), but it should still work. Of course, not everything in julia
+can be transformed to a clojure expression, but given that the primary purpose
+of this translation is to translate back from translated s-expressions (i.e,
+when macroexpanding) it shouldn't be a problem to only support the limited
+amount of things that are available in clojure as special forms.
 
 Final goal - use this to do a `macroexpand` operation on the input clj syntax.
 Basically, process all user-defined macros and output the resultant program,
 but back to clojure syntax.
 This would be useful for things like wispjs, where the translator can do
-everything, but the macro system sucks.
+everything, but the macro system sucks. You can write some macros, macroexpand
+using this Julia module, then pass the resulting s-exprs through wispjs and
+get a js output, all without invoking the horrible infrastructure around
+clojurescript.
 
-Effectively, this is just the **reader** portion of implementing a lisp - I
-take care of doing the rest of the code evaluation.
+Effectively, this is just the **reader** portion of implementing a lisp - Julia
+does everything else using its inbuilt mechanisms.
 
 ## Syntax Documentation
 
@@ -48,60 +56,22 @@ be fixed soon. If you need just `n` do `"n"` instead.
 
 ## Task List/Implementation Plan
 
-### Reader (`parsesexp` function in reader.jl)
-Takes in a file full of forms and returns an object (a list, probably) that
+### Parser `parser.jl`
+Takes in a file full of forms and returns an object (a julia array) that
 contains the tree structure of the form.
 
-#### Read () enclosing operations (and strings) `done`
+#### Tokenize
+The tokenizer is designed to take a raw string and split it into tokens that
+are recognized by the parser. Clojure syntax has pretty simple tokenization,
+so it's been implemented directly as a small state machine inside a while loop.
 
-There is already this algorithm (written in python).
+The only error checking here is for unclosed strings. Parens are handled by the
+parser functions.
 
-```python
-#Sample Usage:
-#>>> parse_sexp("(+ 5 (+ 3 5))")
-#[['+', '5', ['+', '3', '5']]]
-def parse_sexp(string):
-  sexp = [[]]
-  word = ''
-  in_str = False
-  for c in string:
-    if c == '(' and not in_str:
-      sexp.append([])
-    elif c == ')' and not in_str:
-      if(len(word) > 0):
-        sexp[-1].append(word)
-        word = ''
-      temp = sexp.pop()
-      sexp[-1].append(temp)
-    elif c in (' ', '\n', '\t') and not in_str:
-      if len(word) > 0:
-        sexp[-1].append(word)
-        word = ''
-    elif c == '\"':
-      in_str = not in_str
-    else:
-      word = word + c
-  return sexp[0]
-```
+You also get a
 
-I've ported it to julia in reader.jl.
-I can read basic s-expressions into Vectors (julia's version, at least),
-including quoted environments with escaped quotes.
 
-#### Read [...] forms and convert them to `(:__vect__ ...)` `done`
-I need some intermediate vector form to convert the vector literals into.
-This is because special forms often have bindings as a vector after their
-name. For everything else, it's just a vector literal.
-
-eg `(let [x 1 y 2 z 3] ...body)` isn't creating a vector literal, it's
-a special form that has a binding site expressed as a vector.
-
-#### Read {...} forms and convert them to `(:__dict__ ...)` `done`
-
-Same deal, but this time with maps. Normally maps aren't going to be part of
-anything other than just being a map, but destructuring is one example where
-a map has special meaning. However, I still think that this should be an issue
-for the analyzer to deal with rather than the reader.
+#### Parse () enclosing operations (and strings) `done`
 
 #### Ignore comments `done`
 
