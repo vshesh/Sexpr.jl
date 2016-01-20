@@ -69,7 +69,7 @@
   The formula is (max-allowed-lightness/l)^(1/n).
   For the default max lightness of 120, beyond initial lightnesses (l) of 20,
   the function is almost linear."
-  (** (/ 120 l) (/ 1 n)))
+  (^ (/ 120 l) (/ 1 n)))
 
 ; min appropriate lightness for hcl is 10, otherwise it's basically black.
 (defn max-darker-gamma [n l]
@@ -80,7 +80,7 @@
   The formula is (min-allowed-lightness/l)^(-1/n).
   For the default min lightness of 10, beyond initial lightnesses (l) of 20,
   the function is almost linear."
-  (** (/ 10 l) (/ -1 n)))
+  (^ (/ 10 l) (/ -1 n)))
 
 (defn adjust-index [T d]
   (let [nchild d.parent.children.length

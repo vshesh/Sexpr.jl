@@ -480,9 +480,9 @@ if length(ARGS) > 0 && ARGS[1] in ("--run", "-r")
   eval(:(importall Parser))
   eval(:(importall Reader))
   ast,meta = Parser.parsesexp(readall(STDIN))
-  println("ast=",ast)
   for form in ast
     println(Reader.read(form))
+    println("\n")
   end
 end
 
