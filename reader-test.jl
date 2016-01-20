@@ -27,7 +27,8 @@ function test(line)
   form, sexp, expr = split(line, " ||| ")
   @fact(Parser.parsesexp(form, false)[1] --> eval(parse(sexp)),
         "expected $form -> $sexp")
-  @fact(Reader.read(Parser.parsesexp(form, false)[1]) --> stripmeta(eval(parse(expr))),
+  @fact(Reader.read(map(x->x[1], Parser.parsesexp(form))...) -->
+        stripmeta(eval(parse(expr))),
         "expected $form -> $expr")
 end
 

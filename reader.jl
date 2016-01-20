@@ -25,23 +25,24 @@ end
 """ only works if length(xs) % n == 0"""
 partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
+
 """
 
 TODO: Add a second sexp-like object that has line numbers in it, so that
 error reporting actually makes sense.
 """
-function read(sexp)
+function read(sexp, meta)
   if isa(sexp, Array)
     # Special forms
 
     # and/&& (julia makes these special forms, not function calls...)
     if sexp[1] in ("&&", "and")
-      return Expr(:&&, map(read, sexp[2:end])...)
+      return Expr(:&&, map(read, sexp[2:end], meta[2:end])...)
     end
 
     ## or/|| (julia makes these special forms too.)
     if sexp[1] in ("||", "or")
-      return Expr(:||, map(read, sexp[2:end])...)
+      return Expr(:||, map(read, sexp[2:end], meta[2:end])...)
     end
 
     # MACRO special characters, ',`,~,~@
@@ -53,43 +54,42 @@ function read(sexp)
     if sexp[1] in ("'", "`", "quote")
       if length(sexp) != 2
         # can only quote one form at a time.
-        throw(InvalidFormCountError(0,0,"quote",sexp,
+        throw(InvalidFormCountError(meta[1]...,"quote",sexp,
                                     "2 forms", "$(length(sexp))"))
       end
-      return Expr(:quote, read(sexp[2]))
+      return Expr(:quote, read(sexp[2], meta[2]))
     end
 
     if sexp[1] == "~"
       if length(sexp) != 2
-        # can only quote one form at a time.
-        throw(InvalidFormCountError(0,0,"unquote",sexp,
+        throw(InvalidFormCountError(meta[1]...,"unquote",sexp,
                                     "2 forms", "$(length(sexp))"))
       end
-      return Expr(:$, read(sexp[2]))
+      return Expr(:$, read(sexp[2], meta[2]))
     end
 
     if sexp[1] == "~@"
       if length(sexp) != 2
         # can only quote one form at a time.
-        throw(InvalidFormCountError(0,0,"unquote",sexp,
+        throw(InvalidFormCountError(meta[1]...,"unquote-splice",sexp,
                                     "2 forms", "$(length(sexp))"))
       end
-      return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2]))))
+      return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
     end
 
     # def (variable assignment)
     if sexp[1] == "def"
       if length(sexp) != 3
-        throw(InvalidFormCountError(0,0,"def",sexp,
+        throw(InvalidFormCountError(meta[1]...,"def",sexp,
                                     "3 forms", "$(length(sexp))"))
       end
-      return Expr(:(=), readsym(sexp[2]), read(sexp[3]))
+      return Expr(:(=), readsym(sexp[2], meta[2]), read(sexp[3], meta[3]))
     end
 
     # if
     if sexp[1] == "if"
       if !(length(sexp) in Int64[3,4])
-        throw(InvalidFormCountError(0,0,"if",sexp,
+        throw(InvalidFormCountError(meta[1]...,"if",sexp,
                                     "3 or 4 forms", "$(length(sexp))"))
       end
       # there's no "block" here because we only deal with ternary if.
@@ -97,15 +97,18 @@ function read(sexp)
 
       # can optionally have else
       if length(sexp) == 3
-        return Expr(:if, read(sexp[2]), read(sexp[3]))
+        return Expr(:if, read(sexp[2], meta[2]), read(sexp[3], meta[3]))
       else
-        return Expr(:if, read(sexp[2]), read(sexp[3]), read(sexp[4]))
+        return Expr(:if,
+                    read(sexp[2], meta[2]),
+                    read(sexp[3], meta[3]),
+                    read(sexp[4], meta[4]))
       end
     end
 
     # do
     if sexp[1] == "do"
-      return Expr(:block, map(read, sexp[2:end])...)
+      return Expr(:block, map(read, sexp[2:end], meta[2:end])...)
     end
 
     # let
@@ -117,10 +120,11 @@ function read(sexp)
       # TODO more error checking - make sure that sexp[2] is a vector,
       # and that it has an even number of forms.
       if !isa(sexp[2], Array)
-        throw()
+
       end
       if sexp[2][1] != "::__vec__::"
       end
+      # vector has even forms + one VECID, so it should have odd length
       if length(sexp[2]) % 2 != 1
       end
 
@@ -128,11 +132,15 @@ function read(sexp)
       # looks like (let [vars] body), but julia does it backwards.
       return Expr(:let,
                   # body goes here
-                  Expr(:block, map(read, sexp[3:end])...),
+                  Expr(:block, map(read, sexp[3:end], meta[3:end])...),
                   # bindings go here
-                  map(x->Expr(:(=), readsym(x[1]), read(x[2])),
-                      partition(2, sexp[2][2:end]))...)
+                  map(x->Expr(:(=), readsym(x[1]...), read(x[2]...)),
+                      partition(2, collect(zip(sexp[2][2:end], meta[2][2:end]))))...)
     end
+
+    # TODO make named (i.e, not anonymous)
+    # function reading it's own function so that it can apply to
+    # fn/defn at once (DRY).
 
     # TODO need more error checking here - make sure we have vectors where
     # needed and such.
@@ -143,32 +151,41 @@ function read(sexp)
         # small optimization. If it's an anonymous function with only one
         # term in the body, replace with -> syntax.
         if isa(sexp[2], Array)
-          return Expr(:->, Expr(:tuple, map(readsym, sexp[2][2:end])...),
-                      read(sexp[3]))
+          return Expr(:->,
+                      Expr(:tuple,
+                           map(readsym, sexp[2][2:end], meta[2][2:end])...),
+                      read(sexp[3], meta[3]))
         else
-          return Expr(:function, Expr(:tuple, map(readsym, sexp[2][2:end])...),
-                      Expr(:block, map(read, sexp[3:end])...))
+          return Expr(:function,
+                      Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
+                      Expr(:block, map(read, sexp[3:end], meta[3:end])...))
         end
       else
         # (fn name [x] body)
-        return Expr(:function, Expr(:call, readsym(sexp[2]),
-                                    map(readsym, sexp[3][2:end])...),
-                    Expr(:block, map(read, sexp[4:end])...))
+        return Expr(:function,
+                    Expr(:call,
+                         readsym(sexp[2], meta[2]),
+                         map(readsym, sexp[3][2:end], meta[3][2:end])...),
+                    Expr(:block, map(read, sexp[4:end], meta[4:end])...))
       end
+      #TODO add (fn name "docstring" [x] body)
     end
 
     # defn, in julia doing `function x(y) y end` defines it too, so it's just
     # the last part from above
     if sexp[1] == "defn"
       if length(sexp) < 4
-        throw(InvalidFormCountError(0,0,sexp,
+        throw(InvalidFormCountError(meta[1]...,"defn",sexp,
                                     "at least 4 forms","$(length(sexp))"))
       end
       # (defn name [x] body)
-      return Expr(:function, Expr(:call, readsym(sexp[2]),
-                                  map(readsym, sexp[3][2:end])...),
-                  Expr(:block, map(read, sexp[4:end])...))
-      # TODO add ability to deal with docstrings.
+        return Expr(:function,
+                    Expr(:call,
+                         readsym(sexp[2], meta[2]),
+                         map(readsym, sexp[3][2:end], meta[3][2:end])...),
+                    Expr(:block, map(read, sexp[4:end], meta[4:end])...))
+      # TODO add (defn name "docstring [x] body")
+
     end
 
 
@@ -187,37 +204,37 @@ function read(sexp)
       if length(sexp) % 2 != 1
         # note that (DICTID, pair of operations) will always be an
         # odd number of forms
-        throw(InvalidFormCountError(0,0,"map",sexp,
+        throw(InvalidFormCountError(meta[1]...,"map",sexp,
                                     "even number of forms",
                                     "$(length(sexp))"))
       end
       return Expr(:call, :Dict,
                   map(x -> Expr(:(=>), x...),
-                      partition(2, map(read,sexp[2:end])))...)
+                      partition(2, map(read,sexp[2:end], meta[2:end])))...)
     end
     # vector
     if sexp[1] == VECID
-      return Expr(:vect, map(read, sexp[2:end])...)
+      return Expr(:vect, map(read, sexp[2:end], meta[2:end])...)
     end
 
     # Julia special forms.
     # typing assert form
     if sexp[1] == "::"
-      return Expr(:(::), map(read, sexp[2:end])...)
+      return Expr(:(::), map(read, sexp[2:end], meta[2:end])...)
     end
 
     # dot call form -
     if sexp[1][1] == '.'
       # first, if it's like (.x y), this is y.x()
       if length(sexp[1]) > 1
-        return Expr(:call, Expr(:., read(sexp[2]),
-                                QuoteNode(readsym(sexp[1][2:end]))),
+        return Expr(:call, Expr(:., read(sexp[2], meta[2]),
+                                QuoteNode(readsym(sexp[1][2:end], meta[1]))),
                     map(read, sexp[3:end])...)
         # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
       else
-        e = readsym(sexp[end])
-        for sym in reverse(sexp[2:end-1])
-          e = Expr(:., readsym(sym), QuoteNode(e))
+        e = readsym(sexp[end], meta[end])
+        for sym in reverse(zip(sexp[2:end-1], meta[2:end-1]))
+          e = Expr(:., readsym(sym...), QuoteNode(e))
         end
         return e
       end
@@ -225,7 +242,9 @@ function read(sexp)
 
     # if none of these things, it's just a regular function call.
     # in julia syntax, this is
-    return Expr(:call, readsym(sexp[1]), map(read, sexp[2:end])...)
+    return Expr(:call,
+                readsym(sexp[1], meta[1]),
+                map(read, sexp[2:end], meta[2:end])...)
   else
     # Atoms
 
@@ -236,22 +255,22 @@ function read(sexp)
     elseif sexp == "false"
       return false
     elseif isdigit(sexp[1]) || (sexp[1] == '-' && isdigit(sexp[2]))
-      return readnumber(sexp)
+      return readnumber(sexp, meta)
     elseif sexp[1] == '"'
-      #this should strip the '"' characters at both ends
+      # strip the '"' characters at both ends first.
       return unescape(sexp[2:end-1])
     elseif sexp[1] == '\\' && length(sexp) > 1
-      return readchar(sexp)
+      return readchar(sexp, meta)
     # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
     elseif sexp[1] == ':'
       if contains(sexp, ".") || contains(sexp, "/")
-        throw(InvalidTokenError(0,0,sexp))
+        throw(InvalidTokenError(meta...,sexp))
       end
       return symbol(sexp[2:end])
     # [symbol]* -> symbol (variable in julia, like :symbol)
     else
       # the base option is that we're dealing with a symbol.
-      return readsym(sexp)
+      return readsym(sexp, meta)
     end
   end
 end
@@ -315,7 +334,7 @@ you need ASCII compatability for some external reason.
 Of course, adding sanitizing means we have to also know when we're dealing with
 operators and make sure to exclude them from the sanitization process.
 """
-function readsym(form, unicode=true)
+function readsym(form, meta, unicode=true)
   # Operators
   validops = string("^(?:",
                     #  (math) +, -, *, /, \, ^, %, //
@@ -355,7 +374,7 @@ function readsym(form, unicode=true)
 
   # symbol must begin with a -,_,or a-zA-Z character.
   if match(r"^(?:(?:[-_][a-zA-Z])|[a-zA-Z])", form) == nothing
-    throw(InvalidTokenError(0,0,form))
+    throw(InvalidTokenError(meta...,form))
   end
 
   # extract type
@@ -364,7 +383,7 @@ function readsym(form, unicode=true)
   # We could just ignore everything after the second :: and beyond in the
   # symbol
   if length(symtype) > 2
-    throw(InvalidTokenError(0,0,str))
+    throw(InvalidTokenError(meta...,str))
   end
 
   s = symtype[1]
@@ -435,11 +454,11 @@ function unescape(str)
   s
 end
 
-function readchar(str)
+function readchar(str, meta)
   unescape(str)[1]
 end
 
-function readnumber(str)
+function readnumber(str, meta)
   # if it's just [0-9]* it's an integer
   if ismatch(r"^-?[0-9]+$", str)
     parse(Int, str)
@@ -451,7 +470,7 @@ function readnumber(str)
       parse(Int, p[1], parse(Int,p[2]))
     catch a
       if isa(a, ArgumentError)
-        throw(WrappedException(0,0,a))
+        throw(WrappedException(meta...,a))
       else
         rethrow(a)
       end
@@ -462,13 +481,13 @@ function readnumber(str)
       parse(Float64, str)
     catch a
       if isa(a, ArgumentError)
-        throw(WrappedException(0,0,a))
+        throw(WrappedException(meta...,a))
       else
         rethrow(a)
       end
     end
   else
-    throw(InvalidTokenError(0,0,str))
+    throw(InvalidTokenError(meta...,str))
   end
 end
 
@@ -480,8 +499,8 @@ if length(ARGS) > 0 && ARGS[1] in ("--run", "-r")
   eval(:(importall Parser))
   eval(:(importall Reader))
   ast,meta = Parser.parsesexp(readall(STDIN))
-  for form in ast
-    println(Reader.read(form))
+  for form in zip(ast,meta)
+    println(Reader.read(form...))
     println("\n")
   end
 end

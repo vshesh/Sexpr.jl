@@ -44,17 +44,30 @@ Base.showerror(io::IO, e::InvalidTokenError) =
   print(io, "$(typeof(e)) at line $(e.lineno):$(e.colno), ",
         "invalid token found: $(e.token)")
 
+type InvalidFormStructureError <: Exception
+  lineno::Int
+  colno::Int
+  kind::AbstractString
+  form::Any
+  message::AbstractString
+end
+Base.showerror(io::IO, e::InvalidFormStructureError) =
+  print(io,
+        "$(typeof(e)) at line $(lineno):$(colno), $(e.kind) should have ",
+        "$(e.expected) forms, ",
+        "found $(e.found) instead: $(e.form)")
+
 type InvalidFormCountError <: Exception
   lineno::Int
   colno::Int
   kind::AbstractString
-  form::AbstractString
+  form::Any
   expected::AbstractString
   found::AbstractString
 end
 Base.showerror(io::IO, e::InvalidFormCountError) =
   print(io,
-        "At line $(lineno):$(colno), $(e.kind) should have ",
+        "$(typeof(e)) at line $(e.lineno):$(e.colno), $(e.kind) should have ",
         "$(e.expected) forms, ",
         "found $(e.found) instead: $(e.form)")
 
