@@ -28,53 +28,43 @@ partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
 """
 
-TODO: Add a second sexp-like object that has line numbers in it, so that
-error reporting actually makes sense.
 """
 function read(sexp, meta)
   if isa(sexp, Array)
-    # Special forms
-
-    # and/&& (julia makes these special forms, not function calls...)
-    if sexp[1] in ("&&", "and")
-      return Expr(:&&, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    ## or/|| (julia makes these special forms too.)
-    if sexp[1] in ("||", "or")
-      return Expr(:||, map(read, sexp[2:end], meta[2:end])...)
+    # empty array
+    if length(sexp) == 0
+      # () = '() != nil (in clojure, anyway. in lisp this is the same as nil)
+      return []
     end
 
     # MACRO special characters, ',`,~,~@
-
-    # quote
-    # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
-    # `x, but outside of that they both are :x, which is a wierd quirk of
-    # julia macros.
-    if sexp[1] in ("'", "`", "quote")
+    if sexp[1] in ("`","'","~","~@","quote")
       if length(sexp) != 2
-        # can only quote one form at a time.
-        throw(InvalidFormCountError(meta[1]...,"quote",sexp,
+        # can only macro character one form at a time.
+        throw(InvalidFormCountError(meta[1]..., sexp[1], sexp,
                                     "2 forms", "$(length(sexp))"))
       end
-      return Expr(:quote, read(sexp[2], meta[2]))
+
+      # quote
+      # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
+      # `x, but outside of that they both are :x, which is a wierd quirk of
+      # julia macros.
+      if sexp[1] in ("'", "`", "quote")
+        return Expr(:quote, read(sexp[2], meta[2]))
+
+      elseif sexp[1] == "~"
+        return Expr(:$, read(sexp[2], meta[2]))
+
+      elseif sexp[1] == "~@"
+        return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
+      end
     end
 
-    if sexp[1] == "~"
-      if length(sexp) != 2
-        throw(InvalidFormCountError(meta[1]...,"unquote",sexp,
-                                    "2 forms", "$(length(sexp))"))
-      end
-      return Expr(:$, read(sexp[2], meta[2]))
-    end
 
-    if sexp[1] == "~@"
-      if length(sexp) != 2
-        # can only quote one form at a time.
-        throw(InvalidFormCountError(meta[1]...,"unquote-splice",sexp,
-                                    "2 forms", "$(length(sexp))"))
-      end
-      return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
+    # Special forms
+    # do
+    if sexp[1] == "do"
+      return Expr(:block, map(read, sexp[2:end], meta[2:end])...)
     end
 
     # def (variable assignment)
@@ -106,11 +96,6 @@ function read(sexp, meta)
       end
     end
 
-    # do
-    if sexp[1] == "do"
-      return Expr(:block, map(read, sexp[2:end], meta[2:end])...)
-    end
-
     # let
     if sexp[1] == "let"
       if length(sexp) < 3
@@ -122,14 +107,14 @@ function read(sexp, meta)
       if !isa(sexp[2], Array)
 
       end
-      if sexp[2][1] != "::__vec__::"
+      if sexp[2][1] != VECID
       end
       # vector has even forms + one VECID, so it should have odd length
       if length(sexp[2]) % 2 != 1
       end
 
 
-      # looks like (let [vars] body), but julia does it backwards.
+      # sexp looks like (let [vars] body), but julia does it backwards.
       return Expr(:let,
                   # body goes here
                   Expr(:block, map(read, sexp[3:end], meta[3:end])...),
@@ -138,58 +123,23 @@ function read(sexp, meta)
                       partition(2, collect(zip(sexp[2][2:end], meta[2][2:end]))))...)
     end
 
-    # TODO make named (i.e, not anonymous)
-    # function reading it's own function so that it can apply to
-    # fn/defn at once (DRY).
-
-    # TODO need more error checking here - make sure we have vectors where
-    # needed and such.
-    # fn (the same thing in julia)
-    if sexp[1] == "fn"
-      if isa(sexp[2], Array)
-        # (fn [x] body)
-        # small optimization. If it's an anonymous function with only one
-        # term in the body, replace with -> syntax.
-        if isa(sexp[2], Array)
-          return Expr(:->,
-                      Expr(:tuple,
-                           map(readsym, sexp[2][2:end], meta[2][2:end])...),
-                      read(sexp[3], meta[3]))
-        else
-          return Expr(:function,
-                      Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
-                      Expr(:block, map(read, sexp[3:end], meta[3:end])...))
-        end
-      else
-        # (fn name [x] body)
-        return Expr(:function,
-                    Expr(:call,
-                         readsym(sexp[2], meta[2]),
-                         map(readsym, sexp[3][2:end], meta[3][2:end])...),
-                    Expr(:block, map(read, sexp[4:end], meta[4:end])...))
-      end
-      #TODO add (fn name "docstring" [x] body)
+    if sexp[1] == "fn" || sexp[1] == "defn"
+      return readfunc(sexp, meta)
     end
 
-    # defn, in julia doing `function x(y) y end` defines it too, so it's just
-    # the last part from above
-    if sexp[1] == "defn"
-      if length(sexp) < 4
-        throw(InvalidFormCountError(meta[1]...,"defn",sexp,
-                                    "at least 4 forms","$(length(sexp))"))
-      end
-      # (defn name [x] body)
-        return Expr(:function,
-                    Expr(:call,
-                         readsym(sexp[2], meta[2]),
-                         map(readsym, sexp[3][2:end], meta[3][2:end])...),
-                    Expr(:block, map(read, sexp[4:end], meta[4:end])...))
-      # TODO add (defn name "docstring [x] body")
-
+    # defmacro
+    # (is literally the same as a function, it just operates
+    # differently internally from normal functions.
+    # the one difference is that the head of the expr needs to be replaced
+    # with "macro" before returning)
+    if sexp[1] == "defmacro"
+      e = readfunc(sexp, meta)
+      e.head = :macro
+      return e
     end
-
 
     # loop/recur? -> might do for instead as a special form
+
 
     # special julia-eque forms
     # for
@@ -218,6 +168,17 @@ function read(sexp, meta)
     end
 
     # Julia special forms.
+
+    # and/&& (julia makes these special forms, not function calls...)
+    if sexp[1] in ("&&", "and")
+      return Expr(:&&, map(read, sexp[2:end], meta[2:end])...)
+    end
+
+    ## or/|| (julia makes these special forms too.)
+    if sexp[1] in ("||", "or")
+      return Expr(:||, map(read, sexp[2:end], meta[2:end])...)
+    end
+
     # typing assert form
     if sexp[1] == "::"
       return Expr(:(::), map(read, sexp[2:end], meta[2:end])...)
@@ -261,17 +222,82 @@ function read(sexp, meta)
       return unescape(sexp[2:end-1])
     elseif sexp[1] == '\\' && length(sexp) > 1
       return readchar(sexp, meta)
-    # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
     elseif sexp[1] == ':'
+      # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
       if contains(sexp, ".") || contains(sexp, "/")
         throw(InvalidTokenError(meta...,sexp))
       end
       return symbol(sexp[2:end])
-    # [symbol]* -> symbol (variable in julia, like :symbol)
     else
+      # [symbol]* -> symbol (variable in julia, like :symbol)
       # the base option is that we're dealing with a symbol.
       return readsym(sexp, meta)
     end
+  end
+end
+
+function readfunc(sexp, meta)
+  # automatically assumes first form is called 'fn',
+  # this makes it work for fn/defn at the same time.
+  # presumably you would check sexp[1] == "fn" before dispatching to this
+  # function.
+
+  # TODO need more error checking here - make sure types of the name/docstring
+  # match. It's being implicitly done by the other read functions, but
+  # prechecking will allow for a better error message than "Invalid Token"
+  # which can be cryptic if you don't know what's going on.
+  if isa(sexp[2], Array) && sexp[2][1] == VECID
+    # (fn [x] body)
+    # small optimization. If it's an anonymous function with only one
+    # term in the body, replace with -> syntax.
+    if length(sexp) == 2
+      return Expr(:->,
+                  Expr(:tuple,
+                       #2:end avoids the VECID element.
+                       map(readsym, sexp[2][2:end], meta[2][2:end])...),
+                  read(sexp[3], meta[3]))
+    elseif length(sexp) == 3
+      return Expr(:->,
+                  Expr(:tuple,
+                       #2:end avoids the VECID element.
+                       map(readsym, sexp[2][2:end], meta[2][2:end])...),
+                  read(sexp[3], meta[3]))
+    else
+      return Expr(:function,
+                  Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
+                  Expr(:block, map(read, sexp[3:end], meta[3:end])...))
+    end
+  elseif isa(sexp[3], Array) && sexp[3][1] == VECID
+    # (fn name [x] body)
+    return Expr(:function,
+                Expr(:call,
+                     readsym(sexp[2], meta[2]),
+                     map(readsym, sexp[3][2:end], meta[3][2:end])...),
+                Expr(:block, map(read, sexp[4:end], meta[4:end])...))
+  elseif isa(sexp[4], Array) && sexp[4][1] == VECID
+    # as of now, docstrings are ignored
+    # in reality, we'd want to emit 2 forms here, one for the docstring,
+    # and one for the function. There's no way to do that without the
+    # begin/end cruft appearing as well.
+
+    # TODO add support for Expr(:multiform) which can hold multiple forms
+    # to be printed out sequentially (without breaks) in the main document.
+
+    # (fn name "docstring" [x] body)
+    return Expr(:function,
+                Expr(:call,
+                     readsym(sexp[2], meta[2]),
+                     map(readsym, sexp[4][2:end], meta[4][2:end])...),
+                Expr(:block, map(read, sexp[5:end], meta[5:end])...))
+
+  else
+    throw(InvalidFormStructureError(
+            meta[1]..., sexp[1], sexp,
+            string(
+              "no function body found in position 2-4",
+              "function definition must match one of the following forms: ",
+              "(fn [x] ...), (fn name [x] ...), (fn name \"docstring\" [x] ...)"
+              )))
   end
 end
 
