@@ -217,7 +217,7 @@ function read(sexp, meta)
       return true
     elseif sexp == "false"
       return false
-    elseif isdigit(sexp[1]) || (sexp[1] == '-' && isdigit(sexp[2]))
+    elseif isdigit(sexp[1]) || (sexp[1] == '-' && length(sexp) > 1 && isdigit(sexp[2]))
       return readnumber(sexp, meta)
     elseif sexp[1] == '"'
       # strip the '"' characters at both ends first.
