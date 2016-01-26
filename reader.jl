@@ -50,6 +50,8 @@ function read(sexp, meta)
       # `x, but outside of that they both are :x, which is a wierd quirk of
       # julia macros.
       if sexp[1] in ("'", "`", "quote")
+        # TODO quote needs to be split to escape everything,
+        # but `esc` is a complex beast in julia.
         return Expr(:quote, read(sexp[2], meta[2]))
 
       elseif sexp[1] == "~"
@@ -194,7 +196,7 @@ function read(sexp, meta)
         # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
       else
         e = readsym(sexp[end], meta[end])
-        for sym in reverse(zip(sexp[2:end-1], meta[2:end-1]))
+        for sym in reverse(collect(zip(sexp[2:end-1], meta[2:end-1])))
           e = Expr(:., readsym(sym...), QuoteNode(e))
         end
         return e
@@ -204,7 +206,7 @@ function read(sexp, meta)
     # if none of these things, it's just a regular function call.
     # in julia syntax, this is
     return Expr(:call,
-                readsym(sexp[1], meta[1]),
+                read(sexp[1], meta[1]),
                 map(read, sexp[2:end], meta[2:end])...)
   else
     # Atoms
@@ -481,7 +483,22 @@ function unescape(str)
 end
 
 function readchar(str, meta)
-  unescape(str)[1]
+  if str == "\newline"
+    return '\n'
+  elseif str == "\space"
+    return ' '
+  elseif str == "\tab"
+    return '\t'
+  elseif str == "\formfeed"
+    return '\f'
+  elseif str == "\backspace"
+    return '\b'
+  elseif str == "\return"
+    return '\r'
+  else
+    # str[2] to get the character after the \
+    return str[2]
+  end
 end
 
 function readnumber(str, meta)
@@ -505,6 +522,17 @@ function readnumber(str, meta)
     try
       # it's possible to still have a malformatted number
       parse(Float64, str)
+    catch a
+      if isa(a, ArgumentError)
+        throw(WrappedException(meta...,a))
+      else
+        rethrow(a)
+      end
+    end
+  elseif ismatch(r"^-?([0-9]+)/([0-9]+)", str)
+    try
+      p = split(str, '/')
+      //(parse(Int64, p[1]), parse(Int64, p[2]))
     catch a
       if isa(a, ArgumentError)
         throw(WrappedException(meta...,a))

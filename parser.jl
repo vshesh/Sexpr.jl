@@ -167,8 +167,8 @@ function tokenize(str::AbstractString)
 end
 
 
-VECID = "::__vec__::"
-DICTID = "::__dict__::"
+VECID = :vect
+DICTID = :dict
 
 function parseform(tokens, meta, state) # -> form, meta, state
   t,s = next(tokens, state)
