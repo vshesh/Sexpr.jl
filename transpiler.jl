@@ -28,7 +28,16 @@ function showexpr(e::Expr)
   end
 end
 
+macro lisp_str(str)
+  transpile(str)
 end
+
+end
+
+
+# parse only
+# transpile from clj -> lisp (done)
+# lisp str macro (done)
 
 if length(ARGS) > 0 && ARGS[1] in ("--run", "-r")
   eval(:(importall Transpiler))

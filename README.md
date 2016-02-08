@@ -103,6 +103,8 @@ does everything else using its inbuilt mechanisms.
   * docstrings are ignored right now.
 * `(def var expr)` defines a variable.
 * `throw` is a function already in julia, so there's no special form dedicated to it.
+* `include` is a function already in julia, so there's no dedicated special
+  form for it.
 
 * TODOS
   * loop/recur (this doesn't have a julia equivalent),
@@ -112,6 +114,8 @@ does everything else using its inbuilt mechanisms.
   * `defmulti` and related (does this even mean anything given julia's
     multiple-dispatch?)
   * `deftype` -> `type` in Julia.
+  * `module` -> should be able to define a module in julia
+  * `import` -> import statement.
   * `(@macro)`-> `macrocall` which is different from normal function call;
      Expr(:macrocall) instead of Expr(:call). It needs to be passed the dumped
      s-expression itself, not the read-in s-expression.
