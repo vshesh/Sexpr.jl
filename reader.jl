@@ -80,7 +80,7 @@ function read(sexp, meta)
 
     # if
     if sexp[1] == "if"
-      if !(length(sexp) in Int64[3,4])
+      if !(length(sexp) in Int[3,4])
         throw(InvalidFormCountError(meta[1]...,"if",sexp,
                                     "3 or 4 forms", "$(length(sexp))"))
       end
@@ -130,13 +130,14 @@ function read(sexp, meta)
     end
 
     # defmacro
-    # (is literally the same as a function, it just operates
-    # differently internally from normal functions.
-    # the one difference is that the head of the expr needs to be replaced
-    # with "macro" before returning)
+    # same as defn, with two differences:
+    # the head of the expr needs to be replaced with "macro" before returning.
+    # the last form needs to be wrapped in a call to Reader.read.
     if sexp[1] == "defmacro"
       e = readfunc(sexp, meta)
       e.head = :macro
+      # this should wrap the entire block
+      e.args[end] = Expr(:call, :(Reader.read), e.args[end])
       return e
     end
 
@@ -186,13 +187,18 @@ function read(sexp, meta)
       return Expr(:(::), map(read, sexp[2:end], meta[2:end])...)
     end
 
+    # parameterized typing form
+    if sexp[1] == "curly"
+      return Expr(:curly, map(readsym, sexp[2:end], meta[2:end])...)
+    end
+
     # dot call form -
     if sexp[1][1] == '.'
       # first, if it's like (.x y), this is y.x()
       if length(sexp[1]) > 1
         return Expr(:call, Expr(:., read(sexp[2], meta[2]),
                                 QuoteNode(readsym(sexp[1][2:end], meta[1]))),
-                    map(read, sexp[3:end])...)
+                    map(read, sexp[3:end], meta[3:end])...)
         # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
       else
         e = readsym(sexp[end], meta[end])
@@ -217,7 +223,8 @@ function read(sexp, meta)
       return true
     elseif sexp == "false"
       return false
-    elseif isdigit(sexp[1]) || (sexp[1] == '-' && length(sexp) > 1 && isdigit(sexp[2]))
+    elseif isdigit(sexp[1]) ||
+        (sexp[1] == '-' && length(sexp) > 1 && isdigit(sexp[2]))
       return readnumber(sexp, meta)
     elseif sexp[1] == '"'
       # strip the '"' characters at both ends first.
@@ -460,6 +467,8 @@ function readbuiltin(str)
   if str == "not=" return :!= end
 
   if str == "mod" return :% end
+
+  # TODO at minimum implement all operators.
   return nothing
 end
 
@@ -510,7 +519,7 @@ function readnumber(str, meta)
     try
       # it's possible to still have a malformatted number
       # this is an int with a specified radix.
-      parse(Int, p[1], parse(Int,p[2]))
+      parse(Int, p[1], parse(Int, p[2]))
     catch a
       if isa(a, ArgumentError)
         throw(WrappedException(meta...,a))
@@ -532,7 +541,7 @@ function readnumber(str, meta)
   elseif ismatch(r"^-?([0-9]+)/([0-9]+)", str)
     try
       p = split(str, '/')
-      //(parse(Int64, p[1]), parse(Int64, p[2]))
+      //(parse(Int, p[1]), parse(Int, p[2]))
     catch a
       if isa(a, ArgumentError)
         throw(WrappedException(meta...,a))
@@ -546,18 +555,5 @@ function readnumber(str, meta)
 end
 
 end #module
-
-
-if length(ARGS) > 0 && ARGS[1] in ("--run", "-r")
-  include("parser.jl")
-  eval(:(importall Parser))
-  eval(:(importall Reader))
-  ast,meta = Parser.parsesexp(readall(STDIN))
-  for form in zip(ast,meta)
-    println(Reader.read(form...))
-    println("\n")
-  end
-end
-
 
 
