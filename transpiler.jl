@@ -1,3 +1,25 @@
+module Util
+
+export stripmeta, tosexp, VECID, DICTID
+
+VECID = :vect
+DICTID = :dict
+
+stripmeta(expr::Expr) = Expr(expr.head, stripmeta(expr.args)...)
+stripmeta(expr::Array) = map(stripmeta, filter(x -> !isa(x, LineNumberNode), expr))
+stripmeta(expr) = return expr
+
+"""
+tosexp takes a julia expression and outputs it as a tuple s-expression form.
+this makes it much easier to write a reader for.
+"""
+tosexp(ex::Expr) = (ex.head, map(tosexp, ex.args)...)
+tosexp(ex) = ex
+
+
+end
+
+
 module Transpiler
 
 include("reader.jl")
@@ -5,30 +27,12 @@ import .Reader
 include("parser.jl")
 import .Parser
 
-export transpile
+export transpile, lisp_str
 
-transpile(str) = map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
+transpile(str::AbstractString) =
+  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
 
-function stripmeta(expr)
-  if isa(expr, Expr)
-    return Expr(expr.head, stripmeta(expr.args)...)
-  elseif isa(expr, Array)
-    return map(stripmeta, filter(x -> !isa(x, LineNumberNode), expr))
-  else
-    return expr
-  end
-end
-
-function showexpr(e::Expr)
-  if e.head == :macro
-    e.head = :function
-    string("macro", @sprintf("%s", stripmeta(e))[9:end])
-  else
-    @sprintf("%s", stripmeta(e))
-  end
-end
-
-macro lisp_str(str)
+macro lisp_str(str::AbstractString)
   transpile(str)
 end
 

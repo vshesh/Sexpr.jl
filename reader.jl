@@ -30,11 +30,11 @@ partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
 """
 function read(sexp, meta)
-  if isa(sexp, Array)
+  if isa(sexp, Tuple) || isa(sexp, Array)
     # empty array
     if length(sexp) == 0
       # () = '() != nil (in clojure, anyway. in lisp this is the same as nil)
-      return []
+      return ()
     end
 
     # MACRO special characters, ',`,~,~@
@@ -228,7 +228,7 @@ function read(sexp, meta)
       return readnumber(sexp, meta)
     elseif sexp[1] == '"'
       # strip the '"' characters at both ends first.
-      return unescape(sexp[2:end-1])
+      return unescape_string(sexp[2:end-1])
     elseif sexp[1] == '\\' && length(sexp) > 1
       return readchar(sexp, meta)
     elseif sexp[1] == ':'
@@ -236,7 +236,7 @@ function read(sexp, meta)
       if contains(sexp, ".") || contains(sexp, "/")
         throw(InvalidTokenError(meta...,sexp))
       end
-      return symbol(sexp[2:end])
+      return Expr(:quote,symbol(sexp[2:end]))
     else
       # [symbol]* -> symbol (variable in julia, like :symbol)
       # the base option is that we're dealing with a symbol.
@@ -473,24 +473,6 @@ function readbuiltin(str)
 end
 
 
-function unescape(str)
-  s = replace(str, "\\b", "\b")
-  s = replace(s, "\\n", "\n")
-  s = replace(s, "\\a", "\a")
-  s = replace(s, "\\t", "\t")
-  s = replace(s, "\\r", "\r")
-  s = replace(s, "\\f", "\f")
-  s = replace(s, "\\v", "\v")
-  s = replace(s, "\\'", "'")
-  s = replace(s, "\\\"", "\"")
-  s = replace(s, "\\\\", "\\")
-
-  # TODO add unicode support
-  # TODO add hex char support
-  # TODO add octal char support
-  s
-end
-
 function readchar(str, meta)
   if str == "\newline"
     return '\n'
@@ -510,16 +492,33 @@ function readchar(str, meta)
   end
 end
 
+function readint(str, meta, radix=10)
+  # cascade along integer sizes to larger and larger types.
+  try
+    parse(Int, str, radix)
+  catch OverflowError
+    try
+      parse(Int64, str, radix)
+    catch OverflowError
+      try
+        parse(Int128, str, radix)
+      catch OverflowError
+        parse(BigInt, str, radix)
+      end
+    end
+  end
+end
+
 function readnumber(str, meta)
   # if it's just [0-9]* it's an integer
   if ismatch(r"^-?[0-9]+$", str)
-    parse(Int, str)
+    readint(str, meta)
   elseif ismatch(r"^-?[0-9]+r[0-9]+$", str)
     p = split(str,'r')
     try
       # it's possible to still have a malformatted number
       # this is an int with a specified radix.
-      parse(Int, p[1], parse(Int, p[2]))
+      readint(p[2], meta, readint(p[1], meta))
     catch a
       if isa(a, ArgumentError)
         throw(WrappedException(meta...,a))
@@ -527,7 +526,7 @@ function readnumber(str, meta)
         rethrow(a)
       end
     end
-  elseif ismatch(r"^-?[0-9]+(\.[0-9]+)([fe]-?[0-9]+)?$", str)
+  elseif ismatch(r"^-?[0-9]+(\.[0-9]+)?([fe]-?[0-9]+)?$", str)
     try
       # it's possible to still have a malformatted number
       parse(Float64, str)
