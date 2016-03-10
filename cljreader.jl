@@ -111,13 +111,13 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
     return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
   end
 
-  # :macrocall -> (@macro ) (macro application)
   # :call>:. -> (.b a) (dot-call syntax)
   if sexp[1] == :call && isa(sexp[2], Array) && sexp[2][1] == :.
     return (join(read(sexp[2])[2:end], "."), map(read, sexp[3:end])...)
   end
+  # :macrocall -> (@macro ) (macro application)
   # :call -> (f a b) (function call)
-  if sexp[1] == :call
+  if sexp[1] == :call || sexp[1] == :macrocall
     return (map(read, sexp[2:end])...)
   end
 
