@@ -474,17 +474,17 @@ end
 
 
 function readchar(str, meta)
-  if str == "\newline"
+  if str == "\\newline"
     return '\n'
-  elseif str == "\space"
+  elseif str == "\\space"
     return ' '
-  elseif str == "\tab"
+  elseif str == "\\tab"
     return '\t'
-  elseif str == "\formfeed"
+  elseif str == "\\formfeed"
     return '\f'
-  elseif str == "\backspace"
+  elseif str == "\\backspace"
     return '\b'
-  elseif str == "\return"
+  elseif str == "\\return"
     return '\r'
   else
     # str[2] to get the character after the \
@@ -513,7 +513,7 @@ function readnumber(str, meta)
   # if it's just [0-9]* it's an integer
   if ismatch(r"^-?[0-9]+$", str)
     readint(str, meta)
-  elseif ismatch(r"^-?[0-9]+r[0-9]+$", str)
+  elseif ismatch(r"^[0-5]?[0-9]+r-?[0-9]+$", str)
     p = split(str,'r')
     try
       # it's possible to still have a malformatted number
@@ -521,7 +521,8 @@ function readnumber(str, meta)
       readint(p[2], meta, readint(p[1], meta))
     catch a
       if isa(a, ArgumentError)
-        throw(WrappedException(meta...,a))
+       throw(WrappedException(meta...,a,
+                               "could not parse number."))
       else
         rethrow(a)
       end
@@ -540,7 +541,7 @@ function readnumber(str, meta)
   elseif ismatch(r"^-?([0-9]+)/([0-9]+)", str)
     try
       p = split(str, '/')
-      //(parse(Int, p[1]), parse(Int, p[2]))
+      //(readint(p[1], meta), readint(p[2], meta))
     catch a
       if isa(a, ArgumentError)
         throw(WrappedException(meta...,a))

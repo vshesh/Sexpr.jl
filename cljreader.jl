@@ -12,6 +12,9 @@ feel are sensible indentation rules.
 module CLJReader
 
 export read
+mapcat(f, args::Array...) = vcat(map(f, args...)...)
+
+
 read(s::Any) = string(s)
 read(s::Void) = "nil"
 read(s::Bool) = string(s)
@@ -25,6 +28,7 @@ read(n::Union{Rational, Complex}) = string(n)
 # TODO - keywords!?
 # They are Expr(:quote, Symbol)s, but it's impossible then to tell a quoted var
 # from a keyword.
+
 
 """
 Expression heads that are not being handled here:
@@ -79,10 +83,23 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
   # Macro special forms
   # :quote -> `() (quote is *actually* syntax-quote)
   # esc -> ~'? resolves the symbol without gensymming.
+  # :$>:tuple>:... unquote splice ~@
+  # :$ unquote ~
 
   # :. -> (.b a) (dot-access syntax)
-  # :(::) -> (:: ) (type definition syntax)
+  if sexp[1] == :.
+    # have to unwind the nested quoting (which is ridiculous imo)
+    if isa(sexp[3], Array)
+      return (".", read(sexp[2]), read(sexp[3])[2:end]...)
+    else
+      return (".", read(sexp[2]), read(sexp[3]))
+    end
+  end
 
+  # :(::) -> (:: ) (type definition syntax)
+  if sexp[1] == :(::)
+    return ("::", map(read, sexp[2:end])...)
+  end
 
   # :vect -> [] (vector literal)
   if sexp[1] == :vect
@@ -90,11 +107,19 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
   end
 
   # (:call, :Dict...) -> {} (dict literal)
-
+  if sexp[1] == :call && sexp[2] == :Dict
+    return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
+  end
 
   # :macrocall -> (@macro ) (macro application)
   # :call>:. -> (.b a) (dot-call syntax)
+  if sexp[1] == :call && isa(sexp[2], Array) && sexp[2][1] == :.
+    return (join(read(sexp[2])[2:end], "."), map(read, sexp[3:end])...)
+  end
   # :call -> (f a b) (function call)
+  if sexp[1] == :call
+    return (map(read, sexp[2:end])...)
+  end
 
   # Special Atoms
   # :// -> rational const.
