@@ -33,27 +33,7 @@ atoms = [
   "a5rNtvlIOveaQBQL", "aINNo0T2bmf7N8PE", "aZjT35MqHjNNcKYe",
   "a17wCv639cgcEjRV", "aHQmVVHhYaEuYrrL", "awGoUtSrYncOYjno",
   "ah1mrXbAJ1T1G9Hv", "aF3AExS1D7K3qTE3", "ajIDc27JWXGzie1U",
-  # Keywords (symbols in julia)
-  ":12", ":1238123", ":x", ":foobar", ":foo-bar", ":foo-bar!?",
-  ":foo-b__ar!_.*?94810293123", "::f!?:++o*o-b_a.x/c_r!+.*?",
-  # Numeric literals
-  "1", "1.0", "2.0", "0.1238139", ".2293841",
-  "10r16", "1871293812398130912301928312308r10",
-  # Character literals
-  "\\x", "\\newline", "\\formfeed", "\\backspace", "\\n", "\\v", "\\b", "\\return",
-  "\\space", "\\return", "\\d",
-  # Booleans and nil
-  "nil", "true", "false",
-  # Special macro characters ',`,~,~@,#,^,#_ TODO(vishesh)
 
-  # String literals
-  "\"\"", "\"a\"", "\"!@#\$%!%#!\"",
-  # every ascii character
-  "\"`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\|asdfghjkl;:\\\"zxcvbn,m./<>?\"",
-  # random ascii characters
-  "\"F#p.PqG4hqY=+|n\"","\":FfJzo!.3c^.U+B\"","\"(xNQ@u&_Tuz^<>%\"",
-  "\"EiEDwpo7L%G.vu8\"","\"Jc[Yu#=6M8\$7(3b\"","\"L1Sq<;;;/.>I+P!va?\"",
-  "\"3X]8n]Gi*A@Pn:O\"","\"FG4=Dm78**0Be~0s!\\\"\"","\"vy;_ajA9!D{0uR//\"",
   ]
 
 facts("Parser.parsesexp(atom) --> [atom]") do

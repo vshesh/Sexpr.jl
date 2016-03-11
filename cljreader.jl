@@ -45,6 +45,7 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
   if sexp[1] == :tuple && length(sexp) == 1
     return ()
   end
+
   # :block -> do
   if sexp[1] == :block
     if length(sexp) == 2
@@ -53,15 +54,19 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
       return ("do", map(read, sexp[2:end])...)
     end
   end
+
   # :if -> if
   if sexp[1] == :if
     return ("if", map(read, sexp[2:end])...)
   end
+
   # :let -> let
   if sexp[1] == :let
     # pass
   end
+
   # :function -> fn (or defn? This is a problem.)
+
   # :-> -> fn
   if sexp[1] == :->
     # if the next element is a single symbol, wrap it in a tuple.
@@ -81,11 +86,16 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
 
 
   # Macro special forms
+  # :macro -> macro definitions should be ignored for now
+  if sexp[1] == :macro
+    return nothing
+  end
   # :quote -> `() (quote is *actually* syntax-quote)
   # esc -> ~'? resolves the symbol without gensymming.
   # :$>:tuple>:... unquote splice ~@
   # :$ unquote ~
 
+  # Julia Special Forms
   # :. -> (.b a) (dot-access syntax)
   if sexp[1] == :.
     # have to unwind the nested quoting (which is ridiculous imo)
@@ -95,21 +105,33 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
       return (".", read(sexp[2]), read(sexp[3]))
     end
   end
-
   # :(::) -> (:: ) (type definition syntax)
   if sexp[1] == :(::)
+    # if it looks like (:: symbol symbol)
+    # then we need to do the conversion here directly.
     return ("::", map(read, sexp[2:end])...)
   end
+  # parameterized types.
+  if sexp[1] == :curly
+    return ("curly", map(read, sexp[2:end])...)
+  end
+  if sexp[1] == :&&
+    return ("and", map(read, sexp[2:end])...)
+  end
+  if sexp[1] == :||
+    return ("or", map(read, sexp[2:end])...)
+  end
+
 
   # :vect -> [] (vector literal)
   if sexp[1] == :vect
     return (:vect, map(read, sexp[2:end])...)
   end
-
   # (:call, :Dict...) -> {} (dict literal)
   if sexp[1] == :call && sexp[2] == :Dict
     return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
   end
+
 
   # :call>:. -> (.b a) (dot-call syntax)
   if sexp[1] == :call && isa(sexp[2], Array) && sexp[2][1] == :.

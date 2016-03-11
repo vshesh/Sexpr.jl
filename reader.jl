@@ -236,7 +236,7 @@ function read(sexp, meta)
       if contains(sexp, ".") || contains(sexp, "/")
         throw(InvalidTokenError(meta...,sexp))
       end
-      return Expr(:quote,symbol(sexp[2:end]))
+      return Expr(:quote,symbol(escapesym(sexp[2:end])))
     else
       # [symbol]* -> symbol (variable in julia, like :symbol)
       # the base option is that we're dealing with a symbol.
@@ -259,18 +259,12 @@ function readfunc(sexp, meta)
     # (fn [x] body)
     # small optimization. If it's an anonymous function with only one
     # term in the body, replace with -> syntax.
-    if length(sexp) == 2
+    if length(sexp) <= 3
       return Expr(:->,
                   Expr(:tuple,
                        #2:end avoids the VECID element.
                        map(readsym, sexp[2][2:end], meta[2][2:end])...),
-                  read(sexp[3], meta[3]))
-    elseif length(sexp) == 3
-      return Expr(:->,
-                  Expr(:tuple,
-                       #2:end avoids the VECID element.
-                       map(readsym, sexp[2][2:end], meta[2][2:end])...),
-                  read(sexp[3], meta[3]))
+                  if length(sexp) == 2 nothing else read(sexp[3], meta[3]) end)
     else
       return Expr(:function,
                   Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
@@ -310,21 +304,7 @@ function readfunc(sexp, meta)
   end
 end
 
-
 """
-The two special characters in a symbol are . and /
-They amount to the same thing in Julia, so all we have to do is
-split the string by those tokens and nest the "dot" form inside them.
-In fact, you can never recover a slash in a symbol, since it just gets coerced
-to a dot anyway. In general, s-expression julia shouldn't have any slashes
-to begin with - there's no concept of a "namespace".
-
-type support is done by allowing :: inside a symbol, eg
-x::Int -> Expr(:(::), x, Int)
-This is tricky because you have to evaluate the type symbol.
-Also, :: can only occur once inside the symbol. Any more times and this will
-throw an error.
-
 Special symbols: clojure allows more than julia is capable of handling.
 eg: *+?!-_':>< (: has to be non-repeating.)
 of these, support for ! and _ comes out of the box.
@@ -342,11 +322,12 @@ type symbols (since unicode boundaries are not clean the way ASCII is).
 
 * * -> \degree °
 * ? -> \Elzglst ʔ
-* + -> \textdoublepipe ǂ
-* - -> \div (fancy looking bordered -, basically) ÷
+* + -> \^+ ⁺
+* - -> \^- ⁻(superscript -, basically)
 * ' -> \prime ′ (Who uses a quote in the name of a variable?)
-* < -> \epsilon ϵ (most < looking characters aren't allowed as part of a variable)
-* > -> \backepsilon ϶
+* < -> \angle ∠
+* > -> \whitepointerright ▻ (hard to find a > looking unicode character.)
+* : -> \textbrokenbar ¦
 
 Alternatively, you could convert it to a messy escaped ASCII version, if
 desired.
@@ -365,6 +346,44 @@ This might be nice for situations where you're going to only macroexpand,
 since it avoids unicode headaches. It would suck if you actually had to
 go read the Julia code afterwards though. ASCII only mode is only useful if
 you need ASCII compatability for some external reason.
+"""
+function escapesym(form, unicode=true)
+  if unicode
+    str = replace(form, "*", "°")
+    str = replace(str, "?", "ʔ")
+    str = replace(str, "+", "⁺")
+    str = replace(str, "-", "¯")
+    str = replace(str, "'", "′")
+    str = replace(str, "<", "∠")
+    str = replace(str, ">", "▻")
+    str = replace(str, ":", "¦")
+  else
+    str = replace(form, "_" ,"__")
+    str = replace(str, "*" ,"_s")
+    str = replace(str, "?" ,"_q")
+    str = replace(str, "+" ,"_p")
+    str = replace(str, "-" ,"_d")
+    str = replace(str, "'" ,"_a")
+    str = replace(str, "<", "_l")
+    str = replace(str, ">", "_g")
+    str = replace(str, ":", "_c")
+  end
+  return str
+end
+
+"""
+The two special characters in a symbol are . and /
+They amount to the same thing in Julia, so all we have to do is
+split the string by those tokens and nest the "dot" form inside them.
+In fact, you can never recover a slash in a symbol, since it just gets coerced
+to a dot anyway. In general, s-expression julia shouldn't have any slashes
+to begin with - there's no concept of a "namespace".
+
+type support is done by allowing :: inside a symbol, eg
+x::Int -> Expr(:(::), x, Int)
+This is tricky because you have to evaluate the type symbol.
+Also, :: can only occur once inside the symbol. Any more times and this will
+throw an error.
 
 Of course, adding sanitizing means we have to also know when we're dealing with
 operators and make sure to exclude them from the sanitization process.
@@ -388,24 +407,7 @@ function readsym(form, meta, unicode=true)
   if b != nothing return b end
 
   # replace the non-julia symbol characters.
-  if unicode
-    str = replace(form, "*", "°")
-    str = replace(str, "?", "ʔ")
-    str = replace(str, "+", "ǂ")
-    str = replace(str, "-", "÷")
-    str = replace(str, "'", "′")
-    str = replace(str, "<", "ϵ")
-    str = replace(str, ">", "϶")
-  else
-    str = replace(form, "_" ,"__")
-    str = replace(str, "*" ,"_s")
-    str = replace(str, "?" ,"_q")
-    str = replace(str, "+" ,"_p")
-    str = replace(str, "-" ,"_d")
-    str = replace(str, "'" ,"_a")
-    str = replace(str, "<", "_l")
-    str = replace(str, ">", "_g")
-  end
+  str = escapesym(form, unicode)
 
   # symbol must begin with a -,_,or a-zA-Z character.
   if match(r"^(?:(?:[-_][a-zA-Z])|[a-zA-Z])", form) == nothing

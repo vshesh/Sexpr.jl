@@ -84,6 +84,50 @@ Characters
 
 
 Strings
+"a" ||| "\"a\"" ||| "a"
+"\"" ||| "\"\\\"\"" ||| "\""
+"!@#$%!%#!" ||| "\"!@#\$%!%#!\"" ||| "!@#\$%!%#!"
+"`1234567809-=~!@#$%^*(&)_+qwerrtweurpiouy[]{}\\|asdfghjkl;:\"zxcvbn,m./<>?" ||| "\"`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\\\|asdfghjkl;:\\\"zxcvbn,m./<>?\"" ||| "`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\|asdfghjkl;:\"zxcvbn,m./<>?"
+"F#p.PqG4hqY=+|n" ||| "\"F#p.PqG4hqY=+|n\"" ||| "F#p.PqG4hqY=+|n"
+":FfJzo!.3c^.U+B" ||| "\":FfJzo!.3c^.U+B\"" ||| ":FfJzo!.3c^.U+B"
+"(xNQ@u&_Tuz^<>%" ||| "\"(xNQ@u&_Tuz^<>%\"" ||| "(xNQ@u&_Tuz^<>%"
+"EiEDwpo7L%G.vu8" ||| "\"EiEDwpo7L%G.vu8\"" ||| "EiEDwpo7L%G.vu8"
+"Jc[Yu#=6M8$7(3b" ||| "\"Jc[Yu#=6M8\$7(3b\"" ||| "Jc[Yu#=6M8\$7(3b"
+"L1Sq<;;;/.>I+P!va?" ||| "\"L1Sq<;;;/.>I+P!va?\"" ||| "L1Sq<;;;/.>I+P!va?"
+"3X]8n]Gi*A@Pn:O" ||| "\"3X]8n]Gi*A@Pn:O\"" ||| "3X]8n]Gi*A@Pn:O"
+"FG4=Dm78**0Be~0s!\"" ||| "\"FG4=Dm78**0Be~0s!\\\"\"" ||| "FG4=Dm78**0Be~0s!\""
+"vy;_ajA9!D{0uR//" ||| "\"vy;_ajA9!D{0uR//\"" ||| "vy;_ajA9!D{0uR//"
+
+Keywords
+":12" ||| ":12" ||| symbol("12")
+":1238123" ||| ":1238123" ||| symbol("1238123")
+":x" ||| ":x" ||| :x
+":foobar" ||| ":foobar" ||| :foobar
+":foo-bar" ||| ":foo-bar" ||| :foo¯bar
+":foo-bar!?" ||| ":foo-bar!?" ||| :foo¯bar!ʔ
+":foo-b__ar!_*?94810293123" ||| ":foo-b__ar!_*?94810293123" ||| :foo¯b__ar!_°ʔ94810293123
+"::f!?:++o*o-b_a-xc_r!+>>>><<<<<*?"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
