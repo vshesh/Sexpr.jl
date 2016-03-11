@@ -348,8 +348,9 @@ go read the Julia code afterwards though. ASCII only mode is only useful if
 you need ASCII compatability for some external reason.
 """
 function escapesym(form, unicode=true)
+  str = form
   if unicode
-    str = replace(form, "*", "°")
+    str = replace(str, "*", "°")
     str = replace(str, "?", "ʔ")
     str = replace(str, "+", "⁺")
     str = replace(str, "-", "¯")
@@ -358,7 +359,7 @@ function escapesym(form, unicode=true)
     str = replace(str, ">", "▻")
     str = replace(str, ":", "¦")
   else
-    str = replace(form, "_" ,"__")
+    str = replace(str, "_" ,"__")
     str = replace(str, "*" ,"_s")
     str = replace(str, "?" ,"_q")
     str = replace(str, "+" ,"_p")
@@ -406,9 +407,6 @@ function readsym(form, meta, unicode=true)
   b = readbuiltin(form)
   if b != nothing return b end
 
-  # replace the non-julia symbol characters.
-  str = escapesym(form, unicode)
-
   # symbol must begin with a -,_,or a-zA-Z character.
   # @ is also allowed for macros.
   if match(r"^[@-_a-zA-Z]", form) == nothing
@@ -416,7 +414,7 @@ function readsym(form, meta, unicode=true)
   end
 
   # extract type
-  symtype = split(str, "::")
+  symtype = split(form, "::")
   # Note that this is strict parsing.
   # We could just ignore everything after the second :: and beyond in the
   # symbol
@@ -432,13 +430,13 @@ function readsym(form, meta, unicode=true)
   # now parse s for dots and slashes
   # the dotted name is built in reverse.
   parts = split(s, r"[./]")
-  e = symbol(parts[end])
+  e = symbol(escapesym(parts[end]))
   for p in reverse(parts[1:end-1])
-    e = Expr(:., symbol(p), QuoteNode(e))
+    e = Expr(:., symbol(escapesym(p)), QuoteNode(e))
   end
 
   if length(symtype) > 1
-    return Expr(:(::), e, eval(readsym(t)))
+    return Expr(:(::), e, readsym(t, meta))
   else
     return e
   end
