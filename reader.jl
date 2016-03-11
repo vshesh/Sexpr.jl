@@ -430,9 +430,9 @@ function readsym(form, meta, unicode=true)
   # now parse s for dots and slashes
   # the dotted name is built in reverse.
   parts = split(s, r"[./]")
-  e = symbol(escapesym(parts[end]))
-  for p in reverse(parts[1:end-1])
-    e = Expr(:., symbol(escapesym(p)), QuoteNode(e))
+  e = symbol(escapesym(parts[1]))
+  for p in parts[2:end]
+    e = Expr(:., e, QuoteNode(symbol(escapesym(p))))
   end
 
   if length(symtype) > 1
