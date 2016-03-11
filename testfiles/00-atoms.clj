@@ -99,14 +99,39 @@ Strings
 "vy;_ajA9!D{0uR//" ||| "\"vy;_ajA9!D{0uR//\"" ||| "vy;_ajA9!D{0uR//"
 
 Keywords
-":12" ||| ":12" ||| symbol("12")
-":1238123" ||| ":1238123" ||| symbol("1238123")
-":x" ||| ":x" ||| :x
-":foobar" ||| ":foobar" ||| :foobar
-":foo-bar" ||| ":foo-bar" ||| :foo¯bar
-":foo-bar!?" ||| ":foo-bar!?" ||| :foo¯bar!ʔ
-":foo-b__ar!_*?94810293123" ||| ":foo-b__ar!_*?94810293123" ||| :foo¯b__ar!_°ʔ94810293123
-"::f!?:++o*o-b_a-xc_r!+>>>><<<<<*?"
+:12 ||| ":12" ||| Expr(:quote, symbol("12"))
+:1238123 ||| ":1238123" ||| Expr(:quote, symbol("1238123"))
+:x ||| ":x" ||| Expr(:quote, :x)
+:foobar ||| ":foobar" ||| Expr(:quote, :foobar)
+:foo-bar ||| ":foo-bar" ||| Expr(:quote, :foo¯bar)
+:foo-bar!? ||| ":foo-bar!?" ||| Expr(:quote, :foo¯bar!ʔ)
+:foo-b__ar!_*?94810293123 ||| ":foo-b__ar!_*?94810293123" ||| Expr(:quote, :foo¯b__ar!_°ʔ94810293123)
+::f!?:++o*o-b_a-xc_r!+>>>><<<<<*? ||| "::f!?:++o*o-b_a-xc_r!+>>>><<<<<*?" ||| Expr(:quote, :¦f!ʔ¦⁺⁺o°o¯b_a¯xc_r!⁺▻▻▻▻∠∠∠∠∠°ʔ)
+
+Symbols
+x ||| "x" ||| :x
+X ||| "X" ||| :X
+foobar ||| "foobar" ||| :foobar
+foo-bar ||| "foo-bar" ||| :foo¯bar
+foo-bar? ||| "foo-bar?" ||| :foo¯barʔ
+foo__bar? ||| "foo__bar?" ||| :foo__barʔ
+FOOBAR_foobar_-foobaar1? ||| "FOOBAR_foobar_-foobaar1?" ||| :FOOBAR_foobar_¯foobaar1ʔ
+FOOBAR!!!!!!!! ||| "FOOBAR!!!!!!!!" ||| :FOOBAR!!!!!!!!
+fOo-bOr!!!!!!?12424+ ||| "fOo-bOr!!!!!!?12424+" ||| :fOo¯bOr!!!!!!ʔ12424⁺
+foo-b_a'_r:!+.*? ||| "foo-b_a'_r:!+.*?" |||  :(foo¯b_a′_r¦!⁺.°ʔ)
+@macro ||| "@macro" ||| symbol("@macro")
+x@y ||| "x@y" ||| symbol("x@y")
+; random 15 char symbols.
+a5rNtvlIOveaQBQL ||| "a5rNtvlIOveaQBQL" ||| :a5rNtvlIOveaQBQL
+aINNo0T2bmf7N8PE ||| "aINNo0T2bmf7N8PE" ||| :aINNo0T2bmf7N8PE
+aZjT35MqHjNNcKYe ||| "aZjT35MqHjNNcKYe" ||| :aZjT35MqHjNNcKYe
+a17wCv639cgcEjRV ||| "a17wCv639cgcEjRV" ||| :a17wCv639cgcEjRV
+aHQmVVHhYaEuYrrL ||| "aHQmVVHhYaEuYrrL" ||| :aHQmVVHhYaEuYrrL
+awGoUtSrYncOYjno ||| "awGoUtSrYncOYjno" ||| :awGoUtSrYncOYjno
+ah1mrXbAJ1T1G9Hv ||| "ah1mrXbAJ1T1G9Hv" ||| :ah1mrXbAJ1T1G9Hv
+aF3AExS1D7K3qTE3 ||| "aF3AExS1D7K3qTE3" ||| :aF3AExS1D7K3qTE3
+ajIDc27JWXGzie1U ||| "ajIDc27JWXGzie1U" ||| :ajIDc27JWXGzie1U
+
 
 
 

@@ -24,15 +24,7 @@ Lots of TODOs here...
 # Note that the reader can read/parse things that are not valid, it's the
 # analyzer's job to figure out what is and isn't proper.
 atoms = [
-  # Symbols (variables in julia)
-  "x", "X", "foobar", "foo-bar",
-  "foo-bar?", "foo__bar?", ":foo-bar", ":FOOBAR_foobar_-foobaar1?",
-  "FOOBAR!!!!!!!!", "fOo-bOr!!!!!!?12424+", "foo-b_a'_r:!+.*?",
-  "@macro", "x@y",
-    # random 15 char symbols
-  "a5rNtvlIOveaQBQL", "aINNo0T2bmf7N8PE", "aZjT35MqHjNNcKYe",
-  "a17wCv639cgcEjRV", "aHQmVVHhYaEuYrrL", "awGoUtSrYncOYjno",
-  "ah1mrXbAJ1T1G9Hv", "aF3AExS1D7K3qTE3", "ajIDc27JWXGzie1U",
+  # random 15 char symbols
 
   ]
 

@@ -410,7 +410,8 @@ function readsym(form, meta, unicode=true)
   str = escapesym(form, unicode)
 
   # symbol must begin with a -,_,or a-zA-Z character.
-  if match(r"^(?:(?:[-_][a-zA-Z])|[a-zA-Z])", form) == nothing
+  # @ is also allowed for macros.
+  if match(r"^[@-_a-zA-Z]", form) == nothing
     throw(InvalidTokenError(meta...,form))
   end
 
