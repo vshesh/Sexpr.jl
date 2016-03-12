@@ -522,8 +522,7 @@ function readnumber(str, meta)
       readint(p[2], meta, readint(p[1], meta))
     catch a
       if isa(a, ArgumentError)
-       throw(WrappedException(meta...,a,
-                               "could not parse number."))
+       throw(WrappedException(meta..., a, "could not parse number."))
       else
         rethrow(a)
       end
