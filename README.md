@@ -82,7 +82,7 @@ does everything else using its inbuilt mechanisms.
 * `or`/`||` (again, what you expect), see above.
 * `(:: x Int)` -> `x::Int` The `::` form defines types.
   * only useful for function and type defintions.
-* TODO `(curly Array Int64)` -> `Array{Int64}` will allow parameterized types.
+* `(curly Array Int64)` -> `Array{Int64}` will allow parameterized types.
 * `(.b a x y)` -> `a.b(x,y)` is the dot call form.
 * `(. a b c d)` -> `a.b.c.d` is the dot access form.
   * note that `((. a b) x y)` is equivalent to `(.b a x y)`.
@@ -90,7 +90,7 @@ does everything else using its inbuilt mechanisms.
 ### Special Forms
 
 * `()` or empty list.
-  * For now, this compiles to an empty array. In some lisps this is equivalent
+  * For now, this compiles to an empty tuple. In some lisps this is equivalent
     to nil (eg Common Lisp) but in Clojure it's not, so I'm following that
     convention.
 * `(do exprs...)` does each expression and returns the results of the last one.
