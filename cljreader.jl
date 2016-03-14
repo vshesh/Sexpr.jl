@@ -60,6 +60,12 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
     return ("if", map(read, sexp[2:end])...)
   end
 
+  if sexp[1] == :comparison
+    if length(sexp) == 4
+      return (read(sexp[3]), read(sexp[2]), read(sexp[4]))
+    end
+  end
+
   # :let -> let
   if sexp[1] == :let
     # pass
@@ -109,6 +115,9 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
   if sexp[1] == :(::)
     # if it looks like (:: symbol symbol)
     # then we need to do the conversion here directly.
+    if length(sexp) == 3 && isa(sexp[3], Symbol)
+      return string(sexp[2], sexp[1], sexp[3])
+    end
     return ("::", map(read, sexp[2:end])...)
   end
   # parameterized types.

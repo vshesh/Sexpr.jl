@@ -9,19 +9,6 @@ using .Parser: DICTID, VECID
 export read
 
 
-"""
-Converts a rich dict based representation of a sexp into an actual
-Expression object.
-"""
-function extractsexp(sexp::Dict{Symbol,Any})
-  expr = sexp[:sexp]
-  if isa(expr, Array{Any})
-    map(extractsexp, expr)
-  else
-    expr
-  end
-end
-
 """ only works if length(xs) % n == 0"""
 partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
