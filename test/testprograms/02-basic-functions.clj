@@ -104,3 +104,5 @@
     (fn [ph d] (index-adjust 50 d))
     (fn [pc d] pc)
     (fn [pl d] (* pl 1.25))))
+    
+
