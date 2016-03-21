@@ -1,9 +1,3 @@
-module ParserTest
-
-using FactCheck
-include("parser.jl")
-using .Parser
-using .Parser.Errors
 """
 So far this module contains only the most basic of tests for the reader.
 
@@ -19,47 +13,16 @@ example doesn't test maps.
 
 Lots of TODOs here...
 """
+module ParserTest
 
+using FactCheck
+include("parser.jl")
+using .Parser
+using .Parser.Errors
 
-# Note that the reader can read/parse things that are not valid, it's the
-# analyzer's job to figure out what is and isn't proper.
-atoms = [
-  # random 15 char symbols
-
-  ]
-
-facts("Parser.parsesexp(atom) --> [atom]") do
-  for a in atoms
-    @fact parsesexp(a, false) --> Any[a]
-  end
-
-  # Special 1->many atom split cases
-  @fact parsesexp("\\c\\d", false) --> Any["\\c","\\d"]
-  @fact parsesexp("\"x\"\"y\"", false) --> Any["\"x\"", "\"y\""]
-end
-
-# Singleton List Literal
-facts("Parser.parsesexp(\"(atom)\") --> [[atom]] ") do
-  for a in atoms
-    @fact parsesexp(string("(",a,")"), false) --> Any[Any[a]]
-  end
-end
-
-# Singleton Vector Literal
-facts("Parser.parsesexp(\"[atom]\") --> [[VECID, atom]] ") do
-  for a in atoms
-    @fact parsesexp(string("[",a,"]"), false) --> Any[Any[VECID, a]]
-  end
-end
-
-# Singleton Map Literal (NOTE THIS IS NOT A LEGAL FORM,
-#                        either you need `#` for a set, or a pair of forms)
-facts("Parser.parsesexp(\"{atom}\") --> [[DICTID, atom]] ") do
-  for a in atoms
-    @fact parsesexp(string("{",a,"}"), false) --> Any[Any[DICTID, a]]
-  end
-end
-
+# Special 1->many atom split cases
+@fact parsesexp("\\c\\d", false) --> Any["\\c","\\d"]
+@fact parsesexp("\"x\"\"y\"", false) --> Any["\"x\"", "\"y\""]
 
 facts("Comments should be ignored") do
   # every ascii character
@@ -80,6 +43,7 @@ facts("Comments should be ignored") do
       Any[Any[VECID, "x"], "x"],
       Any[Any[VECID, "x", "&", "body"], Any[VECID, "x", "body"]]]]
 end
+
 # situations in which the parser should give "unclosed string error"
 stringerrors = [
   # opening quote only

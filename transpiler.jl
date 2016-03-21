@@ -6,12 +6,13 @@ include("parser.jl")
 import .Parser
 include("cljreader.jl")
 import .CLJReader
-import ..Util
+include("util.jl")
+import .Util
 
 export transpile, lisp_str
 
-transpile(str::AbstractString) =
-  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
+transpile(str::AbstractString) = convert(Array{Expr},
+  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...)))
 
 detranspile(ex::Expr) =
   CLJReader.read(Util.stripmeta(Util.tosexp(ex)))
@@ -25,21 +26,3 @@ macro jl(ex::Expr)
 end
 
 end
-
-
-# parse only
-# transpile from clj -> lisp (done)
-# lisp str macro (done)
-
-if length(ARGS) > 0 && ARGS[1] in ("--run", "-r")
-  eval(:(importall Transpiler))
-  for form in Transpiler.transpile(readall(STDIN))
-    println(form)
-    println("\n")
-  end
-end
-
-
-
-
-

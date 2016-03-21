@@ -1,9 +1,9 @@
 module ReaderTest
 
 using FactCheck
-include("parser.jl")
+include("../parser.jl")
 using .Parser
-include("reader.jl")
+include("../reader.jl")
 using .Reader
 
 """
@@ -33,7 +33,7 @@ function test(line)
 end
 
 
-DIRECTORY = "testfiles"
+DIRECTORY = joinpath(dirname(@__FILE__), "testfiles")
 
 for filename in readdir(DIRECTORY)
   open(string(DIRECTORY, "/", filename)) do f

@@ -19,7 +19,7 @@
   "Takes a function of one variable for computing the x coordinate
   and the y coordinate and returns a function that will generate a
   string of how much to translate an element "
-  (fn [d] (+ "translate(" (str (xf d)) ", " (str (yf d)) ")" )))
+  (fn [d] (+ "translate(" (str (xf d)) ", " (str (yf d)) ")")))
 
 (defn rotate [rf]
   "Takes a function rf of one variable that returns the rotation amount
@@ -87,7 +87,7 @@
         i (d.parent.children.indexOf d)]
     (if (= nchild 1) 0
       (/ (* (- (/ i (- nchild 1)) 0.5) T d.parent.dx)
-         (math.sqrt d.depth)) )))
+         (math.sqrt d.depth)))))
 
 (defn hierarchical-color [ht ct lt]
   (fn [d]
@@ -103,4 +103,4 @@
   (hierarchical-color
     (fn [ph d] (index-adjust 50 d))
     (fn [pc d] pc)
-    (fn [pl d] (* pl 1.25)) ))
+    (fn [pl d] (* pl 1.25))))

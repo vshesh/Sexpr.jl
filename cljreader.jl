@@ -12,8 +12,9 @@ feel are sensible indentation rules.
 module CLJReader
 
 export read
-mapcat(f, args::Array...) = vcat(map(f, args...)...)
 
+include("util.jl")
+using .Util.mapcat
 
 read(s::Any) = string(s)
 read(s::Void) = "nil"
@@ -31,6 +32,10 @@ read(n::Union{Rational, Complex}) = string(n)
 
 
 """
+Use Util.tosexp in src/util.jl which will take an expression
+and convert it into a array style sexp which is a representation of how
+julia's internal parser sees things. This sexp is parsed
+
 Expression heads that are not being handled here:
 * :comparison - this requires an infix grammar of understanding how to convert
   the entire list of comparison tokens to an s-expression.
@@ -40,7 +45,7 @@ Expression heads that are not being handled here:
     support reading raw julia files (that weren't first translated from
     s-expression syntax). This is NOT a priority though.
 """
-function read(sexp::Union{Array,Tuple}, toplevel=false)
+function read(sexp::Array, toplevel=false)
   # empty list
   if sexp[1] == :tuple && length(sexp) == 1
     return ()
@@ -72,6 +77,7 @@ function read(sexp::Union{Array,Tuple}, toplevel=false)
   end
 
   # :function -> fn (or defn? This is a problem.)
+  return readfunc(sexp)
 
   # :-> -> fn
   if sexp[1] == :->
