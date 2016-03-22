@@ -37,9 +37,11 @@ function getopts(args)
       nargs = 1
       action = :store_arg
     "--extension", "-e"
-      help = "add an extension that qualifies as a lisp file (can use multiple times). Defaults: clj, cljs, cl, lisp, wisp, hy"
+      help = "add an extension that qualifies as a lisp file (can use multiple times). Defaults: clj, cljs, cl, lisp, wisp, hy."
       nargs = 1
       action = :append_arg
+    # "--strip", "-x"
+    #   help = "removes julia bells and whistles from the clj output. Only applicable in the inverse direction."
     "files"
       help = "If given one file and no output directory, will dump to stdout. If given a directory or multiple files, eg \"sjulia file1 dir file2\", an output directory must be specified with -o/--output where the files will go."
       nargs = '*'
@@ -57,10 +59,11 @@ isset(args, flag) = haskey(args, flag) &&
   
 function finddir(dir::AbstractString)
   for path in readdir(dir)
-    if isfile(joinpath(dir,path))
-      produce(joinpath(dir, path))
-    elseif isdir(joinpath(dir,path))
-      finddir(joinpath(dir, path))
+    fullpath = joinpath(dir, path)
+    if isfile(fullpath)
+      produce(fullpath)
+    elseif isdir(fullpath)
+      finddir(fullpath)
     end
   end
 end
@@ -77,6 +80,8 @@ function processfile(io::IO,
   end
 end
 
+const DEBUG = false
+
 function main()
   if length(ARGS) == 0
     getopts(["-h"])
@@ -84,27 +89,37 @@ function main()
   
   # configure parsedargs
   parsedargs = getopts(ARGS)
+  DEBUG && info(parsedargs)
+  
   isflagset = flag -> isset(parsedargs, flag)
 
   transpile = Transpiler.transpile
-  newlines = 1
+  outext = ".jl"
   if isflagset(:invert)
     transpile = Transpiler.detranspile
+    outext = ".clj"
   end
+  DEBUG && info("invert: $(isflagset(:invert))")
+  DEBUG && info("outext: $(outext)")
     
   process = (io, program) -> processfile(
     io, transpile, program, parsedargs[:lines])
 
   if isflagset(:cat) || length(parsedargs[:files]) == 0
+    DEBUG && info("mode: cat - reading from STDIN")
     process(STDOUT, readall(STDIN))
   else
     if length(parsedargs[:files]) > 1 && !isflagset(:output)
       error("There must be an output directory to process multiple files.")
     
-    elseif length(parsedargs[:files]) == 1 && !isflagset(:output)
+    elseif length(parsedargs[:files]) == 1 &&
+      isfile(parsedargs[:files][1]) &&
+      !isflagset(:output)
+      DEBUG && info("mode: single file STDOUT")
       # it's okay to have only 1 file - if no output,then dump to STDOUT
       process(STDOUT, readall(parsedargs[:files][1]))
     else
+      DEBUG && info("mode: files to output directory $(parsedargs[:output][1])")
       # have nonzero files and output is set.
       # output is the head of the path where to write the file
       for path in parsedargs[:files]
@@ -115,38 +130,16 @@ function main()
         elseif isdir(path)
           # filter extensions? (-e option to set extensions)
           #
-          for file in Task(finddir(path))
+          for file in Task(() -> finddir(path))
             outfile = joinpath(parsedargs[:output][1],
-                               split(file, Base.path_separator; limit=2)[2])
+                               file[length(path)+1:end])
+            info("writing $outfile")
             process(open(outfile, "w"), readall(file))
           end
         end
       end
     end
   end
-
 end
 
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

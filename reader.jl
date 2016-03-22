@@ -270,8 +270,10 @@ function readfunc(sexp, meta)
     # and one for the function. There's no way to do that without the
     # begin/end cruft appearing as well.
 
-    # TODO add support for Expr(:multiform) which can hold multiple forms
+    # TODO add support for Expr(:toplevel) which can hold multiple forms
     # to be printed out sequentially (without breaks) in the main document.
+    # the hard part is going to be being able to read that stuff back into
+    # clojure in cljreader.
 
     # (fn name "docstring" [x] body)
     return Expr(:function,
@@ -293,7 +295,7 @@ end
 
 """
 Special symbols: clojure allows more than julia is capable of handling.
-eg: *+?!-_':>< (: has to be non-repeating.)
+eg: \*?!+-':><_ (: has to be non-repeating.)
 of these, support for ! and _ comes out of the box.
 We need a isomorphism from some clojure name to a julia name.
 Of course, doing so would lead to some pretty ugly symbol names, so there's
@@ -321,13 +323,13 @@ desired.
 
 * ! is given
 * _ -> __ (needs to be escaped)
-* * -> _s
-* ? -> _q
-* + -> _p
-* - -> _d
-* ' -> _a
-* > -> _g
-* < -> _l
+* * -> \_s
+* ? -> \_q
+* + -> \_p
+* - -> \_d
+* ' -> \_a
+* > -> \_g
+* < -> \_l
 
 This might be nice for situations where you're going to only macroexpand,
 since it avoids unicode headaches. It would suck if you actually had to
@@ -387,7 +389,7 @@ function readsym(form, meta, unicode=true)
                     "|(?:==)|(?:!=)|<|>|(?:<=)|(?:>=)",
                     ")\$"
                     )
-  if match(Regex(validops), form) != nothing
+  if length(form) < 4 && match(Regex(validops), form) != nothing
     return symbol(form)
   end
 
