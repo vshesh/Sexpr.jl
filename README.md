@@ -1,6 +1,6 @@
 # S-Julia - s-expression to julia convertor.
 
-![](https://travis-ci.org/vshesh/s-julia.svg?branch=master)
+![Build Status](https://travis-ci.org/vshesh/s-julia.svg?branch=master)
 
 ![Coverage Status](https://coveralls.io/repos/github/vshesh/s-julia/badge.svg?branch=master)
 
