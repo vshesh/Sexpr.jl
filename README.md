@@ -1,5 +1,7 @@
 # S-Julia - s-expression to julia convertor.
 
+![](https://travis-ci.org/vshesh/s-julia.svg?branch=master)
+
 ## Overview
 
 Goal: Taking the syntax of clojure (or something close enough) and
