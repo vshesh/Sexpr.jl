@@ -45,7 +45,6 @@ so the `Reader` module doesn't have to worry about it.
 """
 module Parser
 
-using Iterators
 include("errors.jl")
 using .Errors
 
