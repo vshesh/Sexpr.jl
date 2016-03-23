@@ -1,10 +1,10 @@
 module ReaderTest
 
 using FactCheck
+
 include("../src/parser.jl")
-using .Parser
-include("../src/reader.jl")
-using .Reader
+
+include("../src/transpiler.jl")
 
 include("../src/util.jl")
 using .Util.tosexp
@@ -37,8 +37,9 @@ function test(line)
   form, sexp, expr = split(line, " ||| ")
   @fact(Parser.parsesexp(form, false)[1] --> eval(parse(sexp)),
         "expected $form -> $sexp")
+  
   expected = cleanex(eval(parse(expr)))
-  actual = cleanex(Reader.read(map(x->x[1], Parser.parsesexp(form))...))
+  actual = cleanex(Transpiler.transpile(form)[1])
   @fact(actual --> expected,
         "expected $(tosexp(actual)) === $(tosexp(expected))")
 end
@@ -47,7 +48,7 @@ end
 DIRECTORY = joinpath(dirname(@__FILE__), "testfiles")
 
 for filename in readdir(DIRECTORY)
-  open(string(DIRECTORY, "/", filename)) do f
+  open(joinpath(DIRECTORY, filename)) do f
     facts(readline(f)) do
       line = nothing
       while !eof(f)

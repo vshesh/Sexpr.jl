@@ -11,8 +11,8 @@ import .Util
 
 export transpile, lisp_str
 
-transpile(str::AbstractString) = convert(Array{Expr},
-  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...)))
+transpile(str::AbstractString) =
+  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
 
 detranspile(ex::Expr) =
   CLJReader.read(Util.stripmeta(Util.tosexp(ex)))

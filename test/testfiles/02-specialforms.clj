@@ -38,6 +38,8 @@ Let
 ; (let [x] x) should cause error
 (let [x 1] x) ||| Any["let", Any[:vect, "x", "1"], "x"] ||| :(let x=1; x end)
 (let [x 1 y (+ x 1)] (+ y x)) ||| Any["let", Any[:vect, "x", "1", "y", Any["+", "x", "1"]], Any["+", "y", "x"]] ||| :(let x=1,y=x+1; y+x end)
+(let [x 1] x) ||| Any["let", Any[:vect, "x", "1"], "x"] ||| :(let x=1; x end)
+(let [x 1 y 2] (+ x y)) ||| Any["let", Any[:vect, "x", "1", "y", "2"], Any["+","x","y"]] ||| :(let x=1,y=2; x+y end)
 
 Fn
 ;(fn) should throw error
@@ -56,8 +58,5 @@ Typing forms (::, curly)
 (.x symbol) ||| Any[".x", "symbol"] ||| :(symbol.x())
 
 
-Clojure Special Forms
+Quote
 (quote x) ||| Any["quote", "x"] ||| Expr(:quote, :x)
-; function literals ALWAYS have a block in the AST, so we have to Explicitly describe the s-expr.
-(let [x 1] x) ||| Any["let", Any[:vect, "x", "1"], "x"] ||| :(let x=1; x end)
-(let [x 1 y 2] (+ x y)) ||| Any["let", Any[:vect, "x", "1", "y", "2"], Any["+","x","y"]] ||| :(let x=1,y=2; x+y end)
