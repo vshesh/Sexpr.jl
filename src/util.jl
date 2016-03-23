@@ -27,7 +27,7 @@ Are the main kinds of nodes.
 stripmeta(expr::Expr) = Expr(expr.head, stripmeta(expr.args)...)
 stripmeta(expr::Array) = map(stripmeta,
   filter(x -> !isa(x, LineNumberNode), expr))
-stripmeta(expr) = return expr
+stripmeta(expr) = expr
 
 
 """

@@ -16,7 +16,7 @@ Lots of TODOs here...
 module ParserTest
 
 using FactCheck
-include("parser.jl")
+include("../src/parser.jl")
 using .Parser
 using .Parser.Errors
 

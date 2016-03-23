@@ -7,6 +7,7 @@ include("parser.jl")
 using .Parser: DICTID, VECID
 
 include("util.jl")
+using .Util: isform
 
 export read
 
@@ -23,7 +24,7 @@ function read(sexp, meta)
     # empty array
     if length(sexp) == 0
       # () = '() != nil (in clojure, anyway. in lisp this is the same as nil)
-      return ()
+      return Expr(:tuple)
     end
 
     # MACRO special characters, ',`,~,~@
@@ -41,7 +42,11 @@ function read(sexp, meta)
       if sexp[1] in ("'", "`", "quote")
         # TODO quote needs to be split to escape everything,
         # but `esc` is a complex beast in julia.
-        return Expr(:quote, read(sexp[2], meta[2]))
+        if isform(sexp[2])
+          return Expr(:tuple, map(read, sexp[2], meta[2])...)
+        else
+          return Expr(:quote, read(sexp[2], meta[2]))
+        end
 
       elseif sexp[1] == "~"
         return Expr(:$, read(sexp[2], meta[2]))
@@ -89,19 +94,21 @@ function read(sexp, meta)
 
     # let
     if sexp[1] == "let"
-      if length(sexp) < 3
+      if length(sexp) < 2
         throw(InvalidFormCountError(meta[1]...,"let",sexp,
-                                    "at least 3 forms","$(length(sexp))"))
+                                    "at least 2 forms","$(length(sexp))"))
       end
       # TODO more error checking - make sure that sexp[2] is a vector,
       # and that it has an even number of forms.
-      if !isa(sexp[2], Array)
-
+      if !isform(sexp[2])
+        
       end
       if sexp[2][1] != VECID
+        
       end
       # vector has even forms + one VECID, so it should have odd length
       if length(sexp[2]) % 2 != 1
+        
       end
 
 
@@ -132,12 +139,10 @@ function read(sexp, meta)
 
     # loop/recur? -> might do for instead as a special form
 
-
     # special julia-eque forms
     # for
     # try/catch
     # deftype -> type
-
 
     # Literals
     # map
@@ -253,7 +258,7 @@ function readfunc(sexp, meta)
                   Expr(:tuple,
                        #2:end avoids the VECID element.
                        map(readsym, sexp[2][2:end], meta[2][2:end])...),
-                  if length(sexp) == 2 nothing else read(sexp[3], meta[3]) end)
+                  if length(sexp) == 2; :nothing else read(sexp[3], meta[3]) end)
     else
       return Expr(:function,
                   Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
