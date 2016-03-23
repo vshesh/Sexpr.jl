@@ -2,7 +2,7 @@
 
 ![Build Status](https://travis-ci.org/vshesh/Sexpr.jl.svg?branch=master)
 
-![Coverage Status](https://coveralls.io/repos/github/vshesh/s-julia/badge.svg?branch=master)
+![Coverage Status](https://coveralls.io/repos/github/vshesh/Sexpr.jl/badge.svg?branch=master)
 
 ## Overview
 
