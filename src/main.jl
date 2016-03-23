@@ -124,17 +124,19 @@ function main()
       # output is the head of the path where to write the file
       for path in parsedargs[:files]
         if isfile(path)
-          outfile = joinpath(parsedargs[:output][1],
-                             string(splitext(basename(path))[1], ".jl"))
-          process(open(outfile, "w"), readall(path))
+          outfile = open(joinpath(parsedargs[:output][1],
+                             string(splitext(basename(path))[1], ".jl")), "w")
+          process(outfile, readall(path))
+          close(outfile)
         elseif isdir(path)
           # filter extensions? (-e option to set extensions)
           #
           for file in Task(() -> finddir(path))
-            outfile = joinpath(parsedargs[:output][1],
-                               file[length(path)+1:end])
+            outfile = open(joinpath(parsedargs[:output][1],
+                               file[length(path)+1:end]), "w")
             info("writing $outfile")
-            process(open(outfile, "w"), readall(file))
+            process(outfile, readall(file))
+            close(outfile)
           end
         end
       end
