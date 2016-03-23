@@ -2,3 +2,5 @@ language: julia
 julia:
   - 0.4
   - release
+after_success:
+  - julia -e 'cd(Pkg.dir("Sexpr")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
