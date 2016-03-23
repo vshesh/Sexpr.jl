@@ -1,6 +1,7 @@
 module CLJReaderTest
+
 using FactCheck
-include("../transpiler.jl")
+include("../src/transpiler.jl")
 using .Transpiler
 
 
