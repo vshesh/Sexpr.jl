@@ -22,7 +22,7 @@ Strips meta nodes - so far this seems to only be LineNumberNodes, but
 there are a few more types of nodes that might also apply
 Expr, QuoteNode, SymbolNode, LineNumberNode, LabelNode, GotoNode, TopNode
 
-Are the main kinds of nodes. 
+Are the main kinds of nodes.
 """
 stripmeta(expr::Expr) = Expr(expr.head, stripmeta(expr.args)...)
 stripmeta(expr::Array) = map(stripmeta,
@@ -50,14 +50,46 @@ function delevel(ex::Expr)
 end
 
 
-function expand(ex::Expr)
-  if ex.head == :module
-    Expr(:module, ex.args[1], ex.args[2], macroexpand(ex.args[3]))
-  else
-    macroexpand(ex)
+"""
+Macroexpand a module in the context of the module itself, rather than
+in global scope. Will also evaluate macros in the module itself, so if a
+macro is defined _before_ it is used, it will be available to subsequent
+expressions.
+"""
+function expand_module(ex::Expr)
+  @assert ex.head === :module
+  std_imports = ex.args[1]::Bool
+  name = ex.args[2]::Symbol
+  body = ex.args[3]::Expr
+  mod = Module(name, std_imports)
+  newbody = quote end
+  modex = Expr(:module, std_imports, name, newbody)
+  for subex in body.args
+    expandf = ()->macroexpand(subex)
+    subex = eval(mod, :($expandf()))
+    push!(newbody.args, subex)
+    eval(mod, subex)
   end
+  modex, mod
 end
 
+# printing macros still a pain in the butt.
+# import Base.string
+#
+# function string(ex::Expr)
+#   if ex.head == :macro
+#     ex.head = :function
+#     s = string(ex)
+#     ex.head = :macro
+#     Base.string("macro", s[9:end])
+#   elseif ex.head == :quote
+#     Base.string(":(", map(tostring, ex.args)..., ")")
+#   elseif ex.head == :$
+#     Base.string("\$(", map(tostring, ex.args)..., ")")
+#   else
+#     Base.string(ex)
+#   end
+# end
 
 end
 

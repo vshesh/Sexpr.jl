@@ -15,8 +15,9 @@ export read
 
 include("util.jl")
 using .Util.mapcat
+using .Util.isform
 
-read(s::Any) = string(s)
+read(s) = string(s)
 read(s::Void) = "nil"
 read(s::Bool) = string(s)
 read(s::Symbol) = string(s)
@@ -77,8 +78,10 @@ function read(sexp::Array, toplevel=false)
   end
 
   # :function -> fn (or defn? This is a problem.)
-  return readfunc(sexp)
-
+  if sexp[1] == :function
+    # pass
+  end
+  
   # :-> -> fn
   if sexp[1] == :->
     # if the next element is a single symbol, wrap it in a tuple.
@@ -149,7 +152,7 @@ function read(sexp::Array, toplevel=false)
 
 
   # :call>:. -> (.b a) (dot-call syntax)
-  if sexp[1] == :call && isa(sexp[2], Array) && sexp[2][1] == :.
+  if sexp[1] == :call && isform(sexp[2]) && sexp[2][1] == :.
     return (join(read(sexp[2])[2:end], "."), map(read, sexp[3:end])...)
   end
   # :macrocall -> (@macro ) (macro application)

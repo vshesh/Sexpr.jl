@@ -6,6 +6,8 @@ using .Errors
 include("parser.jl")
 using .Parser: DICTID, VECID
 
+include("util.jl")
+
 export read
 
 
@@ -124,7 +126,7 @@ function read(sexp, meta)
       e = readfunc(sexp, meta)
       e.head = :macro
       # this should wrap the entire block
-      e.args[end] = Expr(:call, :(Reader.read), e.args[end])
+      e.args[end].args[end] = Expr(:call, :(Reader.read), e.args[end].args[end])
       return e
     end
 
