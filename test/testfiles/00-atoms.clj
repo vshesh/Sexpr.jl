@@ -133,6 +133,7 @@ aF3AExS1D7K3qTE3 ||| "aF3AExS1D7K3qTE3" ||| :aF3AExS1D7K3qTE3
 ajIDc27JWXGzie1U ||| "ajIDc27JWXGzie1U" ||| :ajIDc27JWXGzie1U
 ; special typing syntax
 a::Int64 ||| "a::Int64" ||| :(a::Int64)
+a::Int::Int64 ||| "a::Int::Int64" ||| :(a::Union{Int, Int64})
 a/b ||| "a/b" ||| :(a.b)
 a/b/c/d/e ||| "a/b/c/d/e" ||| :(a.b.c.d.e)
 a.b ||| "a.b" ||| :(a.b)
@@ -144,28 +145,3 @@ a.b.c.d.e ||| "a.b.c.d.e" ||| :(a.b.c.d.e)
 ; builtins
 mod ||| "mod" ||| :%
 = ||| "=" ||| :(==)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

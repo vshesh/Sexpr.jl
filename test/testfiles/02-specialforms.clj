@@ -74,7 +74,7 @@ Typing forms (::, curly)
 (:: x Int) ||| Any["::", "x", "Int"] ||| :(x::Int)
 (:: x (curly Union Int Int64)) ||| Any["::", "x", Any["curly", "Union", "Int", "Int64"]] ||| :(x::Union{Int, Int64})
 (:: x Int Int64) ||| Any["::", "x", "Int", "Int64"] ||| :(x::Union{Int, Int64})
-
+;(:: x Int Int64 Int128) ||| Any["::", "x", "Int", "Int64", "Int128"] ||| :(x::Union{Int, Int64, Int128})
 
 Dot access/call
 ; there are a lot of issues with expr equality in julia.

@@ -111,7 +111,6 @@ function read(sexp, meta)
         
       end
 
-
       # sexp looks like (let [vars] body), but julia does it backwards.
       return Expr(:let,
                   # body goes here
@@ -137,13 +136,6 @@ function read(sexp, meta)
       return e
     end
 
-    # loop/recur? -> might do for instead as a special form
-
-    # special julia-eque forms
-    # for
-    # try/catch
-    # deftype -> type
-
     # Literals
     # map
     if sexp[1] == DICTID
@@ -165,6 +157,18 @@ function read(sexp, meta)
     end
 
     # Julia special forms.
+    
+    # module related
+    # module
+    # import
+    # export
+    # using
+    # include is a function, so it's fine
+    
+    
+    # for
+    # try/catch
+    # deftype -> type
 
     # and/&& (julia makes these special forms, not function calls...)
     if sexp[1] in ("&&", "and")
@@ -178,16 +182,36 @@ function read(sexp, meta)
 
     # typing assert form
     if sexp[1] == "::"
+      # TODO :: error checking - only contains symbol or curly form with symbols.
+      for form in sexp[3:end]
+        if isform(sexp) && sexp[1] != "curly"
+        end
+      end
       if length(sexp) == 3
-        return Expr(:(::), read(sexp[2], meta[2]), readsym(sexp[3], meta[3]))
+        return Expr(:(::), read(sexp[2], meta[2]), read(sexp[3], meta[3]))
       else
-        return Expr(:(::), read(sexp[2], meta[2]), Expr(:curly, :Union, map(readsym, sexp[3:end], meta[3:end])...))
+        return Expr(:(::),
+                    read(sexp[2], meta[2]),
+                    Expr(:curly, :Union, map(read, sexp[3:end], meta[3:end])...))
       end
     end
 
     # parameterized typing form
     if sexp[1] == "curly"
-      return Expr(:curly, map(readsym, sexp[2:end], meta[2:end])...)
+      for i in 2:length(sexp)
+        if isform(sexp[i]) && sexp[i][1] != "curly"
+          throw(InvalidFormStructureError(meta[i], "curly", sexp,
+            string("curly forms can only have other curly forms as subexpressions.",
+                   "Found a $(sexp[i][1]) form at position $i instead.")))
+        end
+      end
+      
+      # have to map read because there can be numbers too, eg:
+      # Array{Any,1}. => (curly Array Any 1)
+      # Or further curly forms like
+      # Union{Array{Int}, Array{Int64}} =>
+      # (curly Union (curly Array Int) (curly Array Int64))
+      return Expr(:curly, map(read, sexp[2:end], meta[2:end])...)
     end
 
     # dot call form -
