@@ -10,6 +10,11 @@ Lists and Quoted Lists
 (1,2,3) ||| Any["1", "2", "3"] ||| Expr(:call, 1, 2, 3)
 '(+ 2 3) ||| Any["'", Any["+", "2", "3"]] ||| :((+, 2, 3))
 
+Vector Literals
+[] ||| Any[:vect] ||| :([])
+[1 2 3] ||| Any[:vect, "1", "2", "3"] ||| :([1,2,3])
+[[1 2] [3 4 [5]]] ||| Any[:vect, Any[:vect, "1", "2"], Any[:vect, "3", "4", Any[:vect, "5"]]] ||| :([[1,2],[3,4,[5]]])
+
 Do
 (do) ||| Any["do"] ||| :(begin end)
 (do (println "hello")) ||| Any["do", Any["println", "\"hello\""]] ||| :(begin println("hello") end)
@@ -37,26 +42,45 @@ Let
 (let [] x) ||| Any["let", Any[:vect], "x"] ||| Expr(:let, Expr(:block, :x))
 ; (let [x] x) should cause error
 (let [x 1] x) ||| Any["let", Any[:vect, "x", "1"], "x"] ||| :(let x=1; x end)
-(let [x 1 y (+ x 1)] (+ y x)) ||| Any["let", Any[:vect, "x", "1", "y", Any["+", "x", "1"]], Any["+", "y", "x"]] ||| :(let x=1,y=x+1; y+x end)
 (let [x 1] x) ||| Any["let", Any[:vect, "x", "1"], "x"] ||| :(let x=1; x end)
 (let [x 1 y 2] (+ x y)) ||| Any["let", Any[:vect, "x", "1", "y", "2"], Any["+","x","y"]] ||| :(let x=1,y=2; x+y end)
+(let [x 1 y (+ x 1)] (+ y x)) ||| Any["let", Any[:vect, "x", "1", "y", Any["+", "x", "1"]], Any["+", "y", "x"]] ||| :(let x=1,y=x+1; y+x end)
 
 Fn
-;(fn) should throw error
+;TODO (fn) should throw error
 (fn []) ||| Any["fn", Any[:vect]] ||| :(()->nothing)
 (fn [] x) ||| Any["fn", Any[:vect], "x"] ||| :(()->x)
 (fn [x] x) ||| Any["fn", Any[:vect, "x"], "x"] ||| :((x,)->x)
 (fn [x y] (+ x y)) ||| Any["fn", Any[:vect, "x", "y"], Any["+", "x", "y"]] ||| :((x,y)->x+y)
 (fn [x y] (inc x) (+ x y)) ||| Any["fn", Any[:vect, "x", "y"], Any["inc", "x"], Any["+", "x", "y"]] ||| :(function(x,y) inc(x); x+y end)
-(fn f [x] x) ||| Any["fn", "f", Any[:vect, "x"], "x"] ||| :(function f(x) x end)
 
+(fn f []) ||| Any["fn", "f", Any[:vect]] ||| :(function f() begin end end)
+(fn f [] x) ||| Any["fn", "f", Any[:vect], "x"] ||| :(function f() x end)
+(fn f [x] x) ||| Any["fn", "f", Any[:vect, "x"], "x"] ||| :(function f(x) x end)
+(fn f [x y] (+ x y)) ||| Any["fn", "f", Any[:vect, "x", "y"], Any["+", "x", "y"]] ||| :(function f(x,y) x+y end)
+(fn f [x y] (inc x) (+ x y)) ||| Any["fn", "f", Any[:vect, "x", "y"], Any["inc", "x"], Any["+", "x", "y"]] ||| :(function f(x,y) inc(x); x+y end)
+
+Defn
+;TODO (defn) should throw error
+;TODO (defn []) should throw error (defn should only allow named forms)
+(defn f "doc" []) ||| Any["defn", "f", "\"doc\"", Any[:vect]] ||| :(function f() begin end end)
+(defn f "doc" [] x) ||| Any["defn", "f", "\"doc\"", Any[:vect], "x"] ||| :(function f() x end)
+(defn f "doc" [x] x) ||| Any["defn", "f", "\"doc\"", Any[:vect, "x"], "x"] ||| :(function f(x) x end)
+(defn f "doc" [x y] (+ x y)) ||| Any["defn", "f", "\"doc\"", Any[:vect, "x", "y"], Any["+", "x", "y"]] ||| :(function f(x,y) x+y end)
+(defn f "doc" [x y] (inc x) (+ x y)) ||| Any["defn", "f", "\"doc\"", Any[:vect, "x", "y"], Any["inc", "x"], Any["+", "x", "y"]] ||| :(function f(x,y) inc(x); x+y end)
 
 Typing forms (::, curly)
 ;; Contains special forms that derive from julia, not clojure
 (:: x Int) ||| Any["::", "x", "Int"] ||| :(x::Int)
+(:: x (curly Union Int Int64)) ||| Any["::", "x", Any["curly", "Union", "Int", "Int64"]] ||| :(x::Union{Int, Int64})
+(:: x Int Int64) ||| Any["::", "x", "Int", "Int64"] ||| :(x::Union{Int, Int64})
+
+
+Dot access/call
 ; there are a lot of issues with expr equality in julia.
 (.x symbol) ||| Any[".x", "symbol"] ||| :(symbol.x())
+(. x a b c d) ||| Any[".", "x", "a", "b", "c", "d"] ||| :(x.a.b.c.d)
 
-
-Quote
+Quoting/Unquoting
 (quote x) ||| Any["quote", "x"] ||| Expr(:quote, :x)
+'(x) ||| Any["'", Any["x"]] ||| :((x,))

@@ -178,7 +178,11 @@ function read(sexp, meta)
 
     # typing assert form
     if sexp[1] == "::"
-      return Expr(:(::), map(read, sexp[2:end], meta[2:end])...)
+      if length(sexp) == 3
+        return Expr(:(::), read(sexp[2], meta[2]), readsym(sexp[3], meta[3]))
+      else
+        return Expr(:(::), read(sexp[2], meta[2]), Expr(:curly, :Union, map(readsym, sexp[3:end], meta[3:end])...))
+      end
     end
 
     # parameterized typing form
@@ -188,16 +192,16 @@ function read(sexp, meta)
 
     # dot call form -
     if sexp[1][1] == '.'
-      # first, if it's like (.x y), this is y.x()
       if length(sexp[1]) > 1
+        # first, if it's like (.x y), this is y.x()
         return Expr(:call, Expr(:., read(sexp[2], meta[2]),
                                 QuoteNode(readsym(sexp[1][2:end], meta[1]))),
                     map(read, sexp[3:end], meta[3:end])...)
-        # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
       else
-        e = readsym(sexp[end], meta[end])
-        for sym in reverse(collect(zip(sexp[2:end-1], meta[2:end-1])))
-          e = Expr(:., readsym(sym...), QuoteNode(e))
+        # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
+        e = read(sexp[2], meta[2])
+        for i in 3:(length(sexp))
+          e = Expr(:., e, QuoteNode(readsym(sexp[i], meta[i])))
         end
         return e
       end
@@ -288,7 +292,10 @@ function readfunc(sexp, meta)
                      readsym(sexp[2], meta[2]),
                      map(readsym, sexp[4][2:end], meta[4][2:end])...),
                 Expr(:block, map(read, sexp[5:end], meta[5:end])...))
-
+  
+  # TODO add support for multi arity functions. It's not clear how these should
+  # be implemented - separate functions is the way that they're done in julia,
+  # but's that not recoverable.
   else
     throw(InvalidFormStructureError(
             meta[1]..., sexp[1], sexp,
@@ -411,12 +418,6 @@ function readsym(form, meta, unicode=true)
 
   # extract type
   symtype = split(form, "::")
-  # Note that this is strict parsing.
-  # We could just ignore everything after the second :: and beyond in the
-  # symbol
-  if length(symtype) > 2
-    throw(InvalidTokenError(meta...,str))
-  end
 
   s = symtype[1]
   if length(symtype) > 1
@@ -431,8 +432,10 @@ function readsym(form, meta, unicode=true)
     e = Expr(:., e, QuoteNode(symbol(escapesym(p))))
   end
 
-  if length(symtype) > 1
+  if length(symtype) == 2
     return Expr(:(::), e, readsym(t, meta))
+  elseif length(symtype) >= 3
+    return Expr(:(::), e, Expr(:curly, :Union, map(x->readsym(x,meta), symtype[2:end])...))
   else
     return e
   end
@@ -510,7 +513,7 @@ function readnumber(str, meta)
   # if it's just [0-9]* it's an integer
   if ismatch(r"^-?[0-9]+$", str)
     readint(str, meta)
-  elseif ismatch(r"^[0-5]?[0-9]+r-?[0-9]+$", str)
+  elseif ismatch(r"^[0-5]?[0-9]+r-?[0-9a-z]+$", str)
     p = split(str,'r')
     try
       # it's possible to still have a malformatted number
