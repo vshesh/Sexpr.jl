@@ -90,3 +90,5 @@ Dot access/call
 Quoting/Unquoting
 (quote x) ||| Any["quote", "x"] ||| Expr(:quote, :x)
 '(x) ||| Any["'", Any["x"]] ||| :((x,))
+~x ||| Any["~", "x"] ||| Expr(:$, :x)
+~@x ||| Any["~@", "x"] ||| Expr(:$, Expr(:tuple, Expr(:..., :x)))
