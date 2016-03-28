@@ -95,7 +95,7 @@ Macro call
 ; needs to work with literals, nested data structures, and nested forms.
 (@m x) ||| Any["@m", "x"] ||| :(@m x)
 (@m [1 2 3]) ||| Any["@m", Any[:vect, "1", "2", "3"]] ||| :(@m [1,2,3])
-(@m (:html {1 2})) ||| Any["@m", Any[":html", Any[:dict, "1", "2"]]] ||| :(@m (:(:html), :(Dict(1 => 2))))
+(@m (:html {1 2})) ||| Any["@m", Any[":html", Any[:dict, "1", "2"]]] ||| :(@m ($(Expr(:quote, :html)), Dict(1 => 2)))
 
 Quoting/Unquoting
 (quote x) ||| Any["quote", "x"] ||| Expr(:quote, :x)
