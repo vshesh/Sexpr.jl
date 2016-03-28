@@ -2,12 +2,13 @@ module ReaderTest
 
 using FactCheck
 
+include("test-util.jl")
+
 include("../src/parser.jl")
-
 include("../src/transpiler.jl")
-
 include("../src/util.jl")
 using .Util.tosexp
+
 
 """
 There are some things I don't care about in the equality comparison.
@@ -44,34 +45,9 @@ function test(line)
         "expected $(tosexp(actual)) === $(tosexp(expected))")
 end
 
-
-DIRECTORY = joinpath(dirname(@__FILE__), "testfiles")
-
-for filename in readdir(DIRECTORY)
-  open(joinpath(DIRECTORY, filename)) do f
-    facts(readline(f)) do
-      line = nothing
-      while !eof(f)
-        line = readline(f)
-        if match(r"^\s*$", line) == nothing && match(r"^\s*;", line) == nothing
-          break
-        end
-      end
-      while !eof(f)
-        context(line) do
-          while !eof(f)
-            line = readline(f)
-            if match(r"^\s*$", line) != nothing || match(r"^\s*;", line) != nothing
-              continue
-            end
-            # break if we're on a context line
-            if !contains(line, "|||") break end
-            test(line)
-          end
-        end
-      end
-    end
-  end
-end
+TestUtil.testdir(
+  joinpath(dirname(@__FILE__), "testfiles"),
+  (x) -> true,
+  test)
 
 end
