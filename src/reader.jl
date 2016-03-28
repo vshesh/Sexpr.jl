@@ -17,128 +17,264 @@ partition(n,x) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
 
 """
+takes an s-expression and a meta information block about said s-expression
+and uses it to read the form into a julia form.
+The sexp should be passed as an Array of either strings or arrays of strings
+(eg, a tree of strings). So far, meta information only includes the line/col
+number of each atom as it's read in, which is used for error reporting.
 
+There are some comprehensive tests in tests/testfiles/02-specialforms.clj that
+show what is allowed in the readform system and what is not.
 """
-function read(sexp, meta)
-  if isa(sexp, Tuple) || isa(sexp, Array)
-    # empty array
-    if length(sexp) == 0
-      # () = '() != nil (in clojure, anyway. in lisp this is the same as nil)
-      return Expr(:tuple)
+read(sexp, meta) = isform(sexp) ? readform(sexp, meta) : readatom(sexp, meta)
+
+function readform(sexp, meta)
+  # empty array
+  if length(sexp) == 0
+    # () = '() != nil (in clojure, anyway. in lisp this is the same as nil)
+    return Expr(:tuple)
+  end
+
+  # MACRO special characters, ',`,~,~@
+  if sexp[1] in ("`","'","~","~@","quote")
+    if length(sexp) != 2
+      # can only macro character one form at a time.
+      throw(InvalidFormCountError(meta[1]..., sexp[1], sexp,
+                                  "2 forms", "$(length(sexp))"))
     end
 
-    # MACRO special characters, ',`,~,~@
-    if sexp[1] in ("`","'","~","~@","quote")
-      if length(sexp) != 2
-        # can only macro character one form at a time.
-        throw(InvalidFormCountError(meta[1]..., sexp[1], sexp,
-                                    "2 forms", "$(length(sexp))"))
-      end
-
-      # quote
-      # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
-      # `x, but outside of that they both are :x, which is a wierd quirk of
-      # julia macros.
-      if sexp[1] in ("'", "`", "quote")
-        # TODO quote needs to be split to escape everything,
-        # but `esc` is a complex beast in julia.
-        if isform(sexp[2])
-          return Expr(:tuple, map(read, sexp[2], meta[2])...)
-        else
-          return Expr(:quote, read(sexp[2], meta[2]))
-        end
-
-      elseif sexp[1] == "~"
-        return Expr(:$, read(sexp[2], meta[2]))
-
-      elseif sexp[1] == "~@"
-        return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
-      end
-    end
-
-
-    # Special forms
-    # do
-    if sexp[1] == "do"
-      return Expr(:block, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    # def (variable assignment)
-    if sexp[1] == "def"
-      if length(sexp) != 3
-        throw(InvalidFormCountError(meta[1]...,"def",sexp,
-                                    "3 forms", "$(length(sexp))"))
-      end
-      return Expr(:(=), readsym(sexp[2], meta[2]), read(sexp[3], meta[3]))
-    end
-
-    # if
-    if sexp[1] == "if"
-      if !(length(sexp) in Int[3,4])
-        throw(InvalidFormCountError(meta[1]...,"if",sexp,
-                                    "3 or 4 forms", "$(length(sexp))"))
-      end
-      # there's no "block" here because we only deal with ternary if.
-      # Ie. (if true 0 1) -> :(true ? 0 : 1) in Julia.
-
-      # can optionally have else
-      if length(sexp) == 3
-        return Expr(:if, read(sexp[2], meta[2]), read(sexp[3], meta[3]))
+    # quote
+    # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
+    # `x, but outside of that they both are :x, which is a wierd quirk of
+    # julia macros.
+    if sexp[1] in ("'", "`", "quote")
+      # TODO quote needs to be split to escape everything,
+      # but `esc` is a complex beast in julia.
+      if isform(sexp[2])
+        return Expr(:tuple, map(read, sexp[2], meta[2])...)
       else
-        return Expr(:if,
-                    read(sexp[2], meta[2]),
-                    read(sexp[3], meta[3]),
-                    read(sexp[4], meta[4]))
+        return Expr(:quote, read(sexp[2], meta[2]))
       end
+
+    elseif sexp[1] == "~"
+      return Expr(:$, read(sexp[2], meta[2]))
+
+    elseif sexp[1] == "~@"
+      return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
+    end
+  end
+
+
+  # Special forms
+  # do
+  if sexp[1] == "do"
+    return Expr(:block, map(read, sexp[2:end], meta[2:end])...)
+  end
+
+  # def (variable assignment)
+  if sexp[1] == "def"
+    if length(sexp) != 3
+      throw(InvalidFormCountError(meta[1]...,"def",sexp,
+                                  "3 forms", "$(length(sexp))"))
+    end
+    return Expr(:(=), readsym(sexp[2], meta[2]), read(sexp[3], meta[3]))
+  end
+
+  # if
+  if sexp[1] == "if"
+    if !(length(sexp) in Int[3,4])
+      throw(InvalidFormCountError(meta[1]...,"if",sexp,
+                                  "3 or 4 forms", "$(length(sexp))"))
+    end
+    # there's no "block" here because we only deal with ternary if.
+    # Ie. (if true 0 1) -> :(true ? 0 : 1) in Julia.
+
+    # can optionally have else
+    if length(sexp) == 3
+      return Expr(:if, read(sexp[2], meta[2]), read(sexp[3], meta[3]))
+    else
+      return Expr(:if,
+                  read(sexp[2], meta[2]),
+                  read(sexp[3], meta[3]),
+                  read(sexp[4], meta[4]))
+    end
+  end
+
+  # let
+  if sexp[1] == "let"
+    if length(sexp) < 2
+      throw(InvalidFormCountError(meta[1]...,"let",sexp,
+                                  "at least 2 forms","$(length(sexp))"))
+    end
+    # TODO more error checking - make sure that sexp[2] is a vector,
+    # and that it has an even number of forms.
+    if !isform(sexp[2])
+      
+    end
+    if sexp[2][1] != VECID
+      
+    end
+    # vector has even forms + one VECID, so it should have odd length
+    if length(sexp[2]) % 2 != 1
+      
     end
 
-    # let
-    if sexp[1] == "let"
-      if length(sexp) < 2
-        throw(InvalidFormCountError(meta[1]...,"let",sexp,
-                                    "at least 2 forms","$(length(sexp))"))
-      end
-      # TODO more error checking - make sure that sexp[2] is a vector,
-      # and that it has an even number of forms.
-      if !isform(sexp[2])
-        
-      end
-      if sexp[2][1] != VECID
-        
-      end
-      # vector has even forms + one VECID, so it should have odd length
-      if length(sexp[2]) % 2 != 1
-        
-      end
+    # sexp looks like (let [vars] body), but julia does it backwards.
+    return Expr(:let,
+                # body goes here
+                Expr(:block, map(read, sexp[3:end], meta[3:end])...),
+                # bindings go here
+                map(x->Expr(:(=), readsym(x[1]...), read(x[2]...)),
+                    partition(2, collect(zip(sexp[2][2:end], meta[2][2:end]))))...)
+  end
 
-      # sexp looks like (let [vars] body), but julia does it backwards.
-      return Expr(:let,
-                  # body goes here
-                  Expr(:block, map(read, sexp[3:end], meta[3:end])...),
-                  # bindings go here
-                  map(x->Expr(:(=), readsym(x[1]...), read(x[2]...)),
-                      partition(2, collect(zip(sexp[2][2:end], meta[2][2:end]))))...)
+  if sexp[1] == "fn" || sexp[1] == "defn"
+    return readfunc(sexp, meta)
+  end
+
+  # defmacro
+  # same as defn, with two differences:
+  # the head of the expr needs to be replaced with "macro" before returning.
+  # the last form needs to be wrapped in a call to Sexpr.read.
+  if sexp[1] == "defmacro"
+    e = readfunc(sexp, meta)
+    e.head = :macro
+    # this should wrap the entire block
+    e.args[end].args[end] = Expr(:call, :(Sexpr.read), e.args[end].args[end])
+    return e
+  end
+
+  # Literals
+  # map
+  if sexp[1] == DICTID
+    # MUST have pairs of operations
+    if length(sexp) % 2 != 1
+      # note that (DICTID, pair of operations) will always be an
+      # odd number of forms
+      throw(InvalidFormCountError(meta[1]...,"map",sexp,
+                                  "even number of forms",
+                                  "$(length(sexp))"))
     end
+    return Expr(:call, :Dict,
+                map(x -> Expr(:(=>), x...),
+                    partition(2, map(read,sexp[2:end], meta[2:end])))...)
+  end
+  # vector
+  if sexp[1] == VECID
+    return Expr(:vect, map(read, sexp[2:end], meta[2:end])...)
+  end
 
-    if sexp[1] == "fn" || sexp[1] == "defn"
-      return readfunc(sexp, meta)
+  # Julia special forms.
+  
+  # module related
+  # module
+  # import
+  # export
+  # using
+  # include is a function, so it's fine
+  
+  
+  # for
+  # try/catch
+  # deftype -> type
+
+  # and/&& (julia makes these special forms, not function calls...)
+  if sexp[1] in ("&&", "and")
+    return Expr(:&&, map(read, sexp[2:end], meta[2:end])...)
+  end
+
+  ## or/|| (julia makes these special forms too.)
+  if sexp[1] in ("||", "or")
+    return Expr(:||, map(read, sexp[2:end], meta[2:end])...)
+  end
+
+  # typing assert form
+  if sexp[1] == "::"
+    # TODO :: error checking - only contains symbol or curly form with symbols.
+    for form in sexp[3:end]
+      if isform(sexp) && sexp[1] != "curly"
+      end
     end
+    if length(sexp) == 3
+      return Expr(:(::), read(sexp[2], meta[2]), read(sexp[3], meta[3]))
+    else
+      return Expr(:(::),
+                  read(sexp[2], meta[2]),
+                  Expr(:curly, :Union, map(read, sexp[3:end], meta[3:end])...))
+    end
+  end
 
-    # defmacro
-    # same as defn, with two differences:
-    # the head of the expr needs to be replaced with "macro" before returning.
-    # the last form needs to be wrapped in a call to Sexpr.read.
-    if sexp[1] == "defmacro"
-      e = readfunc(sexp, meta)
-      e.head = :macro
-      # this should wrap the entire block
-      e.args[end].args[end] = Expr(:call, :(Sexpr.read), e.args[end].args[end])
+  # parameterized typing form
+  if sexp[1] == "curly"
+    for i in 2:length(sexp)
+      if isform(sexp[i]) && sexp[i][1] != "curly"
+        throw(InvalidFormStructureError(meta[i], "curly", sexp,
+          string("curly forms can only have other curly forms as subexpressions.",
+                 "Found a $(sexp[i][1]) form at position $i instead.")))
+      end
+    end
+    
+    # have to map read because there can be numbers too, eg:
+    # Array{Any,1}. => (curly Array Any 1)
+    # Or further curly forms like
+    # Union{Array{Int}, Array{Int64}} =>
+    # (curly Union (curly Array Int) (curly Array Int64))
+    return Expr(:curly, map(read, sexp[2:end], meta[2:end])...)
+  end
+
+  # dot call form -
+  if sexp[1][1] == '.'
+    if length(sexp[1]) > 1
+      # first, if it's like (.x y), this is y.x()
+      return Expr(:call, Expr(:., read(sexp[2], meta[2]),
+                              QuoteNode(readsym(sexp[1][2:end], meta[1]))),
+                  map(read, sexp[3:end], meta[3:end])...)
+    else
+      # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
+      e = read(sexp[2], meta[2])
+      for i in 3:(length(sexp))
+        e = Expr(:., e, QuoteNode(readsym(sexp[i], meta[i])))
+      end
       return e
     end
+  end
+  
+  #macro call form
+  if sexp[1][1] == '@'
+    # for a macro call, we want to read all the atoms rather than
+    # read all the forms.
+    return Expr(:macrocall, readsym(sexp[1], meta[1]),
+                map(readquoted, sexp[2:end], meta[2:end])...)
+  end
+  
+  # if none of these things, it's just a regular function call.
+  # in julia syntax, this is
+  return Expr(:call,
+              read(sexp[1], meta[1]),
+              map(read, sexp[2:end], meta[2:end])...)
+end
 
-    # Literals
-    # map
-    if sexp[1] == DICTID
+"""
+readquoted does the same thing as read but quotes the whole thing, for
+macrocall purposes.
+
+eg: read(["if", "true", "1", "0"]) -> :(true ? 1 : 0)
+    readasatoms(["if", "true", "1", "0"]) -> [:if, true, 1, 0]
+
+In some sense, this is just a subset of read with the special forms removed,
+and only literals and atoms included. However, the difference here is
+that the readquoted function never calls read, so that none of the special
+forms are evaluated. It's a subtle difference in the way the recursion tree
+is handled, but what seems like repetition of code is unforunately necessary.
+"""
+function readquoted(sexp, meta)
+  if isform(sexp)
+    # TODO move the reading of VECID/DICTID type deals to a readliteral
+    # function which is called from read if the first element of the form
+    # is not a string.
+    if sexp[1] == VECID
+      Expr(:vect, [readquoted(sexp[i], meta[i]) for i in 2:length(sexp)]...)
+    elseif sexp[1] == DICTID
       # MUST have pairs of operations
       if length(sexp) % 2 != 1
         # note that (DICTID, pair of operations) will always be an
@@ -146,124 +282,48 @@ function read(sexp, meta)
         throw(InvalidFormCountError(meta[1]...,"map",sexp,
                                     "even number of forms",
                                     "$(length(sexp))"))
-      end
-      return Expr(:call, :Dict,
-                  map(x -> Expr(:(=>), x...),
-                      partition(2, map(read,sexp[2:end], meta[2:end])))...)
-    end
-    # vector
-    if sexp[1] == VECID
-      return Expr(:vect, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    # Julia special forms.
-    
-    # module related
-    # module
-    # import
-    # export
-    # using
-    # include is a function, so it's fine
-    
-    
-    # for
-    # try/catch
-    # deftype -> type
-
-    # and/&& (julia makes these special forms, not function calls...)
-    if sexp[1] in ("&&", "and")
-      return Expr(:&&, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    ## or/|| (julia makes these special forms too.)
-    if sexp[1] in ("||", "or")
-      return Expr(:||, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    # typing assert form
-    if sexp[1] == "::"
-      # TODO :: error checking - only contains symbol or curly form with symbols.
-      for form in sexp[3:end]
-        if isform(sexp) && sexp[1] != "curly"
-        end
-      end
-      if length(sexp) == 3
-        return Expr(:(::), read(sexp[2], meta[2]), read(sexp[3], meta[3]))
       else
-        return Expr(:(::),
-                    read(sexp[2], meta[2]),
-                    Expr(:curly, :Union, map(read, sexp[3:end], meta[3:end])...))
+        Expr(:call, :Dict,
+              map(x -> Expr(:(=>), x...),
+                  partition(2, map(read,sexp[2:end], meta[2:end])))...)
       end
-    end
-
-    # parameterized typing form
-    if sexp[1] == "curly"
-      for i in 2:length(sexp)
-        if isform(sexp[i]) && sexp[i][1] != "curly"
-          throw(InvalidFormStructureError(meta[i], "curly", sexp,
-            string("curly forms can only have other curly forms as subexpressions.",
-                   "Found a $(sexp[i][1]) form at position $i instead.")))
-        end
-      end
-      
-      # have to map read because there can be numbers too, eg:
-      # Array{Any,1}. => (curly Array Any 1)
-      # Or further curly forms like
-      # Union{Array{Int}, Array{Int64}} =>
-      # (curly Union (curly Array Int) (curly Array Int64))
-      return Expr(:curly, map(read, sexp[2:end], meta[2:end])...)
-    end
-
-    # dot call form -
-    if sexp[1][1] == '.'
-      if length(sexp[1]) > 1
-        # first, if it's like (.x y), this is y.x()
-        return Expr(:call, Expr(:., read(sexp[2], meta[2]),
-                                QuoteNode(readsym(sexp[1][2:end], meta[1]))),
-                    map(read, sexp[3:end], meta[3:end])...)
-      else
-        # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
-        e = read(sexp[2], meta[2])
-        for i in 3:(length(sexp))
-          e = Expr(:., e, QuoteNode(readsym(sexp[i], meta[i])))
-        end
-        return e
-      end
-    end
-
-    # if none of these things, it's just a regular function call.
-    # in julia syntax, this is
-    return Expr(:call,
-                read(sexp[1], meta[1]),
-                map(read, sexp[2:end], meta[2:end])...)
-  else
-    # Atoms
-
-    if sexp == "nil"
-      return nothing
-    elseif sexp == "true"
-      return true
-    elseif sexp == "false"
-      return false
-    elseif isdigit(sexp[1]) ||
-        (sexp[1] == '-' && length(sexp) > 1 && isdigit(sexp[2]))
-      return readnumber(sexp, meta)
-    elseif sexp[1] == '"'
-      # strip the '"' characters at both ends first.
-      return unescape_string(sexp[2:end-1])
-    elseif sexp[1] == '\\' && length(sexp) > 1
-      return readchar(sexp, meta)
-    elseif sexp[1] == ':'
-      # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
-      if contains(sexp, ".") || contains(sexp, "/")
-        throw(InvalidTokenError(meta...,sexp))
-      end
-      return Expr(:quote,symbol(escapesym(sexp[2:end])))
     else
-      # [symbol]* -> symbol (variable in julia, like :symbol)
-      # the base option is that we're dealing with a symbol.
-      return readsym(sexp, meta)
+      Expr(:tuple, map(readquoted, sexp, meta)...)
     end
+  else
+    readatom(sexp, meta)
+  end
+end
+
+"""
+reads only an atom. Should be passed one stringified atom and one meta object.
+Note: do not pass a singleton array. that's not the same thing.
+"""
+function readatom(sexp::AbstractString, meta)
+  if sexp == "nil"
+    return nothing
+  elseif sexp == "true"
+    return true
+  elseif sexp == "false"
+    return false
+  elseif isdigit(sexp[1]) ||
+    (sexp[1] == '-' && length(sexp) > 1 && isdigit(sexp[2]))
+    return readnumber(sexp, meta)
+  elseif sexp[1] == '"'
+    # strip the '"' characters at both ends first.
+    return unescape_string(sexp[2:end-1])
+  elseif sexp[1] == '\\' && length(sexp) > 1
+    return readchar(sexp, meta)
+  elseif sexp[1] == ':'
+    # :[symbol]* -> keyword (symbol in julia, like :(:symbol))
+    if contains(sexp, ".") || contains(sexp, "/")
+      throw(InvalidTokenError(meta...,sexp))
+    end
+    return Expr(:quote,symbol(escapesym(sexp[2:end])))
+  else
+    # [symbol]* -> symbol (variable in julia, like :symbol)
+    # the base option is that we're dealing with a symbol.
+    return readsym(sexp, meta)
   end
 end
 
