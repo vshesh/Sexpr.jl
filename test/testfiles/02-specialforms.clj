@@ -1,5 +1,9 @@
 Special forms such as if, do, fn, etc
 
+And/Or (not true special forms, but have to implemented that way for julia)
+(and true false) ||| Any["and", "true", "false"] ||| Expr(:&&, true, false)
+(or false true) ||| Any["or", "false", "true"] ||| :(false || true)
+
 Lists and Quoted Lists
 () ||| Any[] ||| :(())
 '() ||| Any["'", Any[]] ||| :(())
