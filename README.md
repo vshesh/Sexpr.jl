@@ -154,21 +154,3 @@ does everything else using its inbuilt mechanisms.
 * `unquote-splice` or `~@` unquotes, and also expands the form by one layer
   into the form that's being returned. Ie, `(f ~@x)` is the same as
   `f($(x...))` in julia.
-
-
-##### Multi Arity Functions
-
-In Julia you can already do this by defining a function twice.
-Combined with the ability to define types, I'm not so worried about this one.
-However, technically I should also support the
-
-```clojure
-(def f
-  ([x] 1)
-  ([x y] 2))
-```
-
-syntax. Julia's function dipatch is actually a lot more comprehensive than even
-Clojure's rather lenient version, since it dispatches based on all arguments
-(I suppose only workable because it's compiled.).
-

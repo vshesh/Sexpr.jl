@@ -127,12 +127,12 @@ function read(sexp, meta)
     # defmacro
     # same as defn, with two differences:
     # the head of the expr needs to be replaced with "macro" before returning.
-    # the last form needs to be wrapped in a call to Reader.read.
+    # the last form needs to be wrapped in a call to Sexpr.read.
     if sexp[1] == "defmacro"
       e = readfunc(sexp, meta)
       e.head = :macro
       # this should wrap the entire block
-      e.args[end].args[end] = Expr(:call, :(Reader.read), e.args[end].args[end])
+      e.args[end].args[end] = Expr(:call, :(Sexpr.read), e.args[end].args[end])
       return e
     end
 

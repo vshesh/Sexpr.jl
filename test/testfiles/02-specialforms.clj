@@ -15,10 +15,11 @@ Vector Literals
 [1 2 3] ||| Any[:vect, "1", "2", "3"] ||| :([1,2,3])
 [[1 2] [3 4 [5]]] ||| Any[:vect, Any[:vect, "1", "2"], Any[:vect, "3", "4", Any[:vect, "5"]]] ||| :([[1,2],[3,4,[5]]])
 
-Do
-(do) ||| Any["do"] ||| :(begin end)
-(do (println "hello")) ||| Any["do", Any["println", "\"hello\""]] ||| :(begin println("hello") end)
-(do (println "hello") (println "world")) ||| Any["do", Any["println", "\"hello\""], Any["println", "\"world\""]] ||| :(begin println("hello"); println("world") end)
+Dict Literals
+{} ||| Any[:dict] ||| :(Dict())
+{1 2} ||| Any[:dict, "1", "2"] ||| :(Dict(1 => 2))
+{1 2 3 4} ||| Any[:dict, "1", "2", "3", "4"] ||| :(Dict(1 => 2, 3 => 4))
+{(+ 1 1) 2 :sym "hello"} ||| Any[:dict, Any["+", "1", "1"], "2", ":sym", "\"hello\""] ||| :(Dict(+(1,1) => 2, $(Expr(:quote, :sym)) => "hello"))
 
 If
 ; TODO extend reader-test.jl to take ||| e UnclosedError type forms, which allow
@@ -35,6 +36,11 @@ Def
 ; (def x) should cause error
 (def x 1) ||| Any["def", "x", "1"] ||| :(x = 1)
 (def x (f 5)) ||| Any["def", "x", Any["f", "5"]] ||| :(x = f(5))
+
+Do
+(do) ||| Any["do"] ||| :(begin end)
+(do (println "hello")) ||| Any["do", Any["println", "\"hello\""]] ||| :(begin println("hello") end)
+(do (println "hello") (println "world")) ||| Any["do", Any["println", "\"hello\""], Any["println", "\"world\""]] ||| :(begin println("hello"); println("world") end)
 
 Let
 ; (let) should cause error
