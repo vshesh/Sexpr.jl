@@ -33,3 +33,5 @@ Characters
 '\b' ||| "\\backspace"
 '\r' ||| "\\return"
 
+Strings
+"\"" ||| "\"\"\""
