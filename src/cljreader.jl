@@ -17,6 +17,33 @@ include("util.jl")
 using .Util.mapcat
 using .Util.isform
 
+function unescapesym(form::AbstractString, unicode=true)
+  str = form
+  if unicode
+    str = replace(str, "°", "*")
+    str = replace(str, "ʔ", "?")
+    str = replace(str, "⁺", "+")
+    str = replace(str, "¯", "-")
+    str = replace(str, "′", "'")
+    str = replace(str, "∠", "<")
+    str = replace(str, "▻", ">")
+    str = replace(str, "¦", ":")
+  else
+    str = replace(str, "_s", "*")
+    str = replace(str, "_q", "?")
+    str = replace(str, "_p", "+")
+    str = replace(str, "_d", "-")
+    str = replace(str, "_a", "'")
+    str = replace(str, "_l", "<")
+    str = replace(str, "_g", ">")
+    str = replace(str, "_c", ":")
+    str = replace(str, "__", "_")
+  end
+  return str
+end
+
+
+
 read(s, t::Bool=false) = string(s)
 read(s::Void, t::Bool=false) = "nil"
 #read(s::Bool) = string(s)
@@ -49,9 +76,9 @@ end
 #= Strings =#
 read(s::AbstractString, t::Bool=false) = string("\"", escape_string(s), "\"")
 #= keywords =#
-read(k::QuoteNode, t::Bool=false) = string(":", read(k.value))
+read(k::QuoteNode, t::Bool=false) = k.value == :nothing ? ":nothing" : string(":", read(k.value))
 #= symbols =#
-read(s::Symbol, t::Bool=false) = s == :nothing ? "nil" : string(s)
+read(s::Symbol, t::Bool=false) = s == :nothing ? "nil" : unescapesym(string(s))
 
 """
 Use Util.tosexp in src/util.jl which will take an expression
@@ -124,7 +151,7 @@ function read(sexp::Array, toplevel::Bool=false)
   # Macro special forms
   # :macro -> macro definitions should be ignored for now
   if sexp[1] == :macro
-    return nothing
+    return ("defmacro",)
   end
   # :quote -> `() (quote is *actually* syntax-quote)
   # esc -> ~'? resolves the symbol without gensymming.

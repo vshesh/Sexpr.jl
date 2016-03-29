@@ -4,7 +4,7 @@ Atom Testing
 # what exactly I'd be processing in this situation.
 Nil
 nothing ||| "nil"
-:nothing ||| "nil"
+:nothing ||| ":nothing"
 
 Boolean
 true ||| "true"
@@ -34,4 +34,27 @@ Characters
 '\r' ||| "\\return"
 
 Strings
-"\"" ||| "\"\"\""
+"\"" ||| "\"\\\"\""
+"\n" ||| "\"\\n\""
+"`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\|asdfghjkl;:\"zxcvbn,m./<>?" ||| "\"`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\\\|asdfghjkl;:\\\"zxcvbn,m./<>?\"" ||| "`1234567809-=~!@#\$%^*(&)_+qwerrtweurpiouy[]{}\\|asdfghjkl;:\"zxcvbn,m./<>?"
+
+Keywords
+:12 ||| ":12"
+:x ||| ":x"
+:hello_dad ||| ":hello_dad"
+
+Symbols
+x ||| "x"
+x° ||| "x*"
+foo¯b_a′_r¦!⁺°ʔ ||| "foo-b_a'_r:!+*?"
+a5rNtvlIOveaQBQL ||| "a5rNtvlIOveaQBQL"
+aINNo0T2bmf7N8PE ||| "aINNo0T2bmf7N8PE"
+aZjT35MqHjNNcKYe ||| "aZjT35MqHjNNcKYe"
+a17wCv639cgcEjRV ||| "a17wCv639cgcEjRV"
+aHQmVVHhYaEuYrrL ||| "aHQmVVHhYaEuYrrL"
+awGoUtSrYncOYjno ||| "awGoUtSrYncOYjno"
+ah1mrXbAJ1T1G9Hv ||| "ah1mrXbAJ1T1G9Hv"
+aF3AExS1D7K3qTE3 ||| "aF3AExS1D7K3qTE3"
+ajIDc27JWXGzie1U ||| "ajIDc27JWXGzie1U"
++ ||| "+"
+/ ||| "/"

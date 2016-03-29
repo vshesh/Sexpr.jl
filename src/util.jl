@@ -35,7 +35,12 @@ tosexp takes a julia expression and outputs it as a tuple s-expression form.
 this makes it much easier to write a reader for.
 """
 tosexp(ex::Expr) = Any[ex.head, map(tosexp, ex.args)...]
-tosexp(ex::QuoteNode) = tosexp(ex.value)
+#tosexp(ex::QuoteNode) = Any[:quote, tosexp(ex.value)]
+# Having quotenodes makes it easy to determine what is a keyword and
+# what is a quoted expression.
+# this does make it harder to use Util.tosexp as a debugging tool, so maybe
+# TODO it would be good to write debug function like alltosexp that makes all
+# expr-family objects into a sexpr, in which case you'd see [:quote, :x] there.
 tosexp(ex) = ex
 
 isform(sexp) = isa(sexp, Tuple) || isa(sexp, Array)

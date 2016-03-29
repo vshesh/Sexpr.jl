@@ -14,8 +14,6 @@ export transpile, lisp_str
 transpile(str::AbstractString) =
   map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
 
-detranspile(str::AbstractString, toplevel=false) =
-  detranspile(parse(str), toplevel)
 detranspile(ex, toplevel=false) =
   CLJReader.read(Util.stripmeta(Util.tosexp(ex)), toplevel)
 

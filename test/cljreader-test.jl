@@ -12,7 +12,7 @@ function test(line)
   # this might seem incongruent with the transpile function, which returns
   # an array of forms, but juila's parser auto-wraps everything into a block
   # when the parse function is called.
-  @fact(Transpiler.detranspile(form, false) --> eval(parse(expr)),
+  @fact(Transpiler.detranspile(parse(form), false) --> eval(parse(expr)),
         "expected $form -> $expr")
 end
 
