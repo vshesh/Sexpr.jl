@@ -1,8 +1,11 @@
 Atom Testing
+# atom testing is less of a big deal here because julia recognizes its own
+# types and has written its own parser (so I don't need to check that the
+# parser works, just that the logic that I'm using makes sense)
 
+Nil
 # I'm still not clear on when each of these is supposed to be used where, and
 # what exactly I'd be processing in this situation.
-Nil
 nothing ||| "nil"
 :nothing ||| ":nothing"
 
