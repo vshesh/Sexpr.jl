@@ -15,7 +15,7 @@ function test(line)
   # an array of forms, but juila's parser auto-wraps everything into a block
   # when the parse function is called.
   @fact(Util.oneline(Transpiler.detranspile(parse(form), false)) --> strip(expr),
-        "expected $form -> $expr")
+        "expected $(Util.tosexp(parse(form))) -> $expr")
 end
 
 TestUtil.testdir(

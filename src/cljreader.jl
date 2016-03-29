@@ -163,19 +163,35 @@ function read(sexp::Array, toplevel::Bool=false)
   # Julia Special Forms
   # :. -> (.b a) (dot-access syntax)
   if sexp[1] == :.
-    # have to unwind the nested quoting (which is ridiculous imo)
-    if isa(sexp[3], Array)
-      return (".", read(sexp[2]), read(sexp[3])[2:end]...)
-    else
-      return (".", read(sexp[2]), read(sexp[3]))
+    # heads up that sexp[3] should always be a quotenode.
+    # TODO one more optimization is that if it looks like
+    # (. (. (form) quotenode) quotenode)
+    # it can be made into (. (form) quotenode.quotenode) instead.
+    if isa(sexp[2], Symbol) && isa(sexp[3], QuoteNode)
+      return string(read(sexp[2]), ".", read(sexp[3].value))
+    elseif isform(sexp[2]) && isa(sexp[3], QuoteNode)
+      s = read(sexp[2])
+      if isa(s, AbstractString)
+        return string(s, '.', read(sexp[3].value))
+      elseif length(sexp[2]) >= 3 && isa(sexp[2][3], QuoteNode)
+        return (s[1:end-1]..., string(s[end], '.', read(sexp[3].value)))
+      else
+        return (".", s, read(sexp[3].value))
+      end
     end
   end
   # :(::) -> (:: ) (type definition syntax)
   if sexp[1] == :(::)
+    # again, sexp[3] should be a symbol.
     # if it looks like (:: symbol symbol)
     # then we need to do the conversion here directly.
-    if length(sexp) == 3 && isa(sexp[3], Symbol)
-      return string(sexp[2], sexp[1], sexp[3])
+    if all(x->isa(x, Symbol), sexp[2:end])
+      return join(sexp[2:end], "::")
+    elseif isform(sexp[2]) && isa(sexp[3], Symbol)
+      s = read(sexp[2])
+      if isa(s,AbstractString)
+        return string(s, "::", read(sexp[3]))
+      end
     end
     return ("::", map(read, sexp[2:end])...)
   end
@@ -209,11 +225,15 @@ function read(sexp::Array, toplevel::Bool=false)
 
   # :call>:. -> (.b a) (dot-call syntax)
   if sexp[1] == :call && isform(sexp[2]) && sexp[2][1] == :.
-    return (join(read(sexp[2])[2:end], "."), map(read, sexp[3:end])...)
+    return (read(sexp[2]), map(read, sexp[3:end])...)
   end
   
   # :macrocall -> (@macro ) (macro application)
-  
+  # have to write readquoted to make this work.
+  # it shouldn't be too hard - just atoms and literals need to be read out.
+  if sexp[1] == :macrocall
+    return (read(sexp[2]), map(readquoted, sexp[3:end])...)
+  end
   
   # :call -> (f a b) (function call)
   if sexp[1] == :call
@@ -222,4 +242,24 @@ function read(sexp::Array, toplevel::Bool=false)
 
 end
 
+end
+
+
+function readquoted(sexp, meta)
+  if isform(sexp)
+    # TODO move the reading of VECID/DICTID type deals to a readliteral
+    # function which is called from read if the first element of the form
+    # is not a string.
+    if sexp[1] == :vect
+      return (:vect, map(read, sexp[2:end])...)
+    end
+    if sexp[1] == :call && sexp[2] == :Dict
+      return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
+    else
+      tuple(map(readquoted, sexp, meta))
+    end
+  else
+    # atom
+    read(sexp, meta)
+  end
 end

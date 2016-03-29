@@ -233,7 +233,10 @@ function readform(sexp, meta)
       # second, if it's (. x y z a b...) this is x.y.z.a.b. ...
       e = read(sexp[2], meta[2])
       for i in 3:(length(sexp))
-        e = Expr(:., e, QuoteNode(readsym(sexp[i], meta[i])))
+        nextnode = readsym(sexp[i], meta[i])
+        e = Expr(:., e,
+                 isa(nextnode, Expr) && nextnode.head == :. ?
+                 nextnode : QuoteNode(nextnode))
       end
       return e
     end
@@ -638,5 +641,3 @@ function readnumber(str, meta)
 end
 
 end #module
-
-
