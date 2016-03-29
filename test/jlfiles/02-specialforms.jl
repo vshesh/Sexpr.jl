@@ -31,6 +31,9 @@ if true 1 elseif false 0 else 2 end ||| (if true 1 (if false 0 2))
 1 > 2 ||| (> 1 2)
 1 != 3 ||| (!= 1 3)
 
+:(=)
+x = 5 ||| (def x 5)
+
 :->
 x -> x ||| (fn [x] x)
 (x,y) -> x ||| (fn [x y] x)
