@@ -3,8 +3,19 @@ module Util
 
 export mapcat
 
-export VECID, DICTID
-export stripmeta, tosexp, isform
+export VECID, DICTID, RESERVED_WORDS
+export stripmeta, tosexp, isform, escapesym, unescapesym
+
+# ------------------------- constants -------------------------------
+const VECID = :vect
+const DICTID = :dict
+
+const RESERVED_WORDS = ASCIIString[
+"function", "global", "for", "end", "while", "if", "else", "elseif", "break",
+    "switch", "case", "otherwise", "try", "catch", "end", "const", "immutable",
+    "import", "importall", "export", "type", "typealias", "return",
+    "macro", "quote", "in", "abstract", "module", "using", "continue",
+    "ifelse", "do", "eval", "let", "finally", "throw"]
 
 # ------------------------- General Utilities -----------------------
 
@@ -31,9 +42,6 @@ end
 
 
 # --------------------------- Project Specific Utilities --------------
-
-VECID = :vect
-DICTID = :dict
 
 
 """
@@ -164,6 +172,10 @@ to define the idea of a form.
 """
 isform(sexp) = isa(sexp, Tuple) || isa(sexp, Array)
 
+"""tests if some s-expression is a symbol or not."""
+issymbol(sexp) = isa(sexp, AbstractString) &&
+  sexp != "nil" && sexp != "true" && sexp != "false" &&
+  !isdigit(sexp[1]) && sexp[1] != '"' && (length(sexp) == 1 || sexp[1] != '\\')
 
 """
 tosexp takes a julia expression and outputs it as a tuple s-expression form.

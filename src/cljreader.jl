@@ -17,7 +17,6 @@ include("util.jl")
 using .Util: mapcat, isform, unescapesym, VECID, DICTID
 
 
-
 read(s, t::Bool=false) = string(s)
 read(s::Void, t::Bool=false) = "nil"
 #read(s::Bool) = string(s)
@@ -222,17 +221,27 @@ function readquoted(sexp)
     # function which is called from read if the first element of the form
     # is not a string.
     if sexp[1] == :vect
-      (:vect, map(read, sexp[2:end])...)
+      (:vect, map(readquoted, sexp[2:end])...)
     elseif sexp[1] == :call && sexp[2] == :Dict
-      (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
+      (:dict, map(readquoted, mapcat(x->x[2:end], sexp[3:end]))...)
     elseif sexp[1] == :tuple
-      map(readquoted, sexp[2:end])
+      (map(readquoted, sexp[2:end])...)
     else
       map(readquoted, sexp)
     end
   else
-    # atom
-    read(sexp)
+
+    # strip the \blockfull character from all RESERVED_WORDS
+    if isa(sexp, Symbol)
+      s = string(sexp)
+      if startswith(s, '█') &&
+         # blockfull character apparently takes up 3 characters
+         convert(ASCIIString, s[4:end]) in Util.RESERVED_WORDS
+        convert(ASCIIString, s[4:end])
+      end
+    else
+      read(sexp)
+    end
   end
 end
 

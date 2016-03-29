@@ -51,9 +51,9 @@ function readform(sexp, meta)
       # TODO quote needs to be split to escape everything,
       # but `esc` is a complex beast in julia.
       if isform(sexp[2])
-        return Expr(:tuple, map(read, sexp[2], meta[2])...)
+        return Expr(:tuple, map(readquoted, sexp[2], meta[2])...)
       else
-        return Expr(:quote, read(sexp[2], meta[2]))
+        return Expr(:quote, readquoted(sexp[2], meta[2]))
       end
 
     elseif sexp[1] == "~"
@@ -140,7 +140,7 @@ function readform(sexp, meta)
     e = readfunc(sexp, meta)
     e.head = :macro
     # this should wrap the entire block
-    e.args[end].args[end] = Expr(:call, :(Sexpr.read), e.args[end].args[end])
+    e.args[end].args[end] = Expr(:call, :(Sexpr.rehydrate), e.args[end].args[end])
     return e
   end
 
@@ -294,7 +294,12 @@ function readquoted(sexp, meta)
       Expr(:tuple, map(readquoted, sexp, meta)...)
     end
   else
-    readatom(sexp, meta)
+    if isa(sexp, AbstractString) && sexp in Util.RESERVED_WORDS
+      # there are no dots or other weirdnesses, it's just a straight word.
+      return symbol(string('█', sexp))
+    else
+      readatom(sexp, meta)
+    end
   end
 end
 

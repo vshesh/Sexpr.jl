@@ -9,6 +9,8 @@ using .Transpiler
 
 include("../src/util.jl")
 
+macro symbol(s) symbol(s) end
+
 function test(line)
   form, expr = split(line, " ||| ")
   # this might seem incongruent with the transpile function, which returns
