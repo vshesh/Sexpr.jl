@@ -7,7 +7,7 @@ include("parser.jl")
 using .Parser: DICTID, VECID
 
 include("util.jl")
-using .Util: isform
+using .Util: isform, escapesym
 
 export read
 
@@ -394,73 +394,6 @@ function readfunc(sexp, meta)
   end
 end
 
-"""
-Special symbols: clojure allows more than julia is capable of handling.
-eg: \*?!+-':><_ (: has to be non-repeating.)
-of these, support for ! and _ comes out of the box.
-We need a isomorphism from some clojure name to a julia name.
-Of course, doing so would lead to some pretty ugly symbol names, so there's
-a tradeoff between something readable and something that's backwards
-transformable.
-One thing to note is that julia allows unicode characters, so those might be
-necessary to delineate special marks in the clojure name.
-In fact, that makes for a pretty easy translation, using greek letters,
-but it makes it an EXTREME pain in the ass to translate back to ascii clojure
-type symbols (since unicode boundaries are not clean the way ASCII is).
-
-* !,_ are given
-
-* * -> \degree °
-* ? -> \Elzglst ʔ
-* + -> \^+ ⁺
-* - -> \^- ⁻(superscript -, basically)
-* ' -> \prime ′ (Who uses a quote in the name of a variable?)
-* < -> \angle ∠
-* > -> \whitepointerright ▻ (hard to find a > looking unicode character.)
-* : -> \textbrokenbar ¦
-
-Alternatively, you could convert it to a messy escaped ASCII version, if
-desired.
-
-* ! is given
-* _ -> __ (needs to be escaped)
-* * -> \_s
-* ? -> \_q
-* + -> \_p
-* - -> \_d
-* ' -> \_a
-* > -> \_g
-* < -> \_l
-
-This might be nice for situations where you're going to only macroexpand,
-since it avoids unicode headaches. It would suck if you actually had to
-go read the Julia code afterwards though. ASCII only mode is only useful if
-you need ASCII compatability for some external reason.
-"""
-function escapesym(form, unicode=true)
-  str = form
-  if unicode
-    str = replace(str, "*", "°")
-    str = replace(str, "?", "ʔ")
-    str = replace(str, "+", "⁺")
-    str = replace(str, "-", "¯")
-    str = replace(str, "'", "′")
-    str = replace(str, "<", "∠")
-    str = replace(str, ">", "▻")
-    str = replace(str, ":", "¦")
-  else
-    str = replace(str, "_" ,"__")
-    str = replace(str, "*" ,"_s")
-    str = replace(str, "?" ,"_q")
-    str = replace(str, "+" ,"_p")
-    str = replace(str, "-" ,"_d")
-    str = replace(str, "'" ,"_a")
-    str = replace(str, "<", "_l")
-    str = replace(str, ">", "_g")
-    str = replace(str, ":", "_c")
-  end
-  return str
-end
 
 """
 The two special characters in a symbol are . and /

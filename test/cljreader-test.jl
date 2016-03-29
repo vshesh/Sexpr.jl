@@ -14,7 +14,9 @@ function test(line)
   # this might seem incongruent with the transpile function, which returns
   # an array of forms, but juila's parser auto-wraps everything into a block
   # when the parse function is called.
-  @fact(Util.oneline(Transpiler.detranspile(parse(form), false)) --> strip(expr),
+  e = parse(form)
+  toplevel = isa(e, Expr) && (e.head == :(=) || e.head == :function)
+  @fact(Util.oneline(Transpiler.detranspile(e, toplevel)) --> strip(expr),
         "expected $(Util.tosexp(parse(form))) -> $expr")
 end
 
