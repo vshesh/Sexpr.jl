@@ -1,5 +1,9 @@
 Special Forms
 
+And/Or
+true && false ||| (and true false)
+false || false ||| (or false false)
+
 Empty List
 () ||| ()
 
@@ -43,3 +47,10 @@ x(1,2).y.z ||| (. (x 1 2) y.z)
 :: (type)
 x::Int ||| x::Int
 x::Int::Int64 ||| x::Int::Int64
+x::Array{Int} ||| (:: x (curly Array Int))
+
+:macrocall
+@m 1 ||| (@m 1)
+@m [1, 2, 3] ||| (@m [1 2 3])
+@m (:html, Dict(1=>2)) ||| (@m (:html {1 2}))
+@m 1 2 3 ||| (@m 1 2 3)

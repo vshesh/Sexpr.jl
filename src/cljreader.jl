@@ -242,24 +242,24 @@ function read(sexp::Array, toplevel::Bool=false)
 
 end
 
-end
-
-
-function readquoted(sexp, meta)
+function readquoted(sexp)
   if isform(sexp)
     # TODO move the reading of VECID/DICTID type deals to a readliteral
     # function which is called from read if the first element of the form
     # is not a string.
     if sexp[1] == :vect
-      return (:vect, map(read, sexp[2:end])...)
-    end
-    if sexp[1] == :call && sexp[2] == :Dict
-      return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
+      (:vect, map(read, sexp[2:end])...)
+    elseif sexp[1] == :call && sexp[2] == :Dict
+      (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
+    elseif sexp[1] == :tuple
+      map(readquoted, sexp[2:end])
     else
-      tuple(map(readquoted, sexp, meta))
+      map(readquoted, sexp)
     end
   else
     # atom
-    read(sexp, meta)
+    read(sexp)
   end
+end
+
 end
