@@ -14,8 +14,8 @@ module CLJReader
 export read
 
 include("util.jl")
-using .Util.mapcat
-using .Util.isform
+using .Util: mapcat, isform, VECID, DICTID
+
 
 function unescapesym(form::AbstractString, unicode=true)
   str = form
@@ -139,7 +139,9 @@ function read(sexp::Array, toplevel::Bool=false)
     else
       args[1] = VECID
     end
-    return ("fn", args, read(sexp[3]))
+    return ("fn",
+            isa(args, Symbol) ? (:vect, read(args)) : (:vect, map(read, args[2:end])...),
+            read(sexp[3]))
   end
   # := -> def
   # you should only have def at the toplevel. no defing vars inside something.

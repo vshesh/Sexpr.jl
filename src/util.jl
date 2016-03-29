@@ -8,14 +8,46 @@ export stripmeta, tosexp, isform
 
 # ------------------------- General Utilities -----------------------
 
-mapcat(f, args::Array...) = vcat(map(f, args...)...)
+"""
+concatenates results of mapping f to args.
+f should return an array.
+"""
+mapcat(f, args...) = vcat(map(f, args...)...)
 
+
+"""
+Finds all files in a directory recursively and gives dir path + remaining path.
+"""
+function finddir(dir::AbstractString)
+  for path in readdir(dir)
+    fullpath = joinpath(dir, path)
+    if isfile(fullpath)
+      produce(fullpath)
+    elseif isdir(fullpath)
+      finddir(fullpath)
+    end
+  end
+end
 
 
 # --------------------------- Project Specific Utilities --------------
 
 VECID = :vect
 DICTID = :dict
+
+
+oneline(x::AbstractString) = x
+function oneline(sexp::Union{Array, Tuple})
+  if length(sexp) == 0
+    "()"
+  elseif sexp[1] == VECID
+    "[$(join(map(oneline, sexp[2:end]), " "))]"
+  elseif sexp[1] == DICTID
+    "{$(join(map(oneline, sexp[2:end]), " "))}"
+  else
+    "($(join(map(oneline, sexp), " ")))"
+  end
+end
 
 """
 Strips meta nodes - so far this seems to only be LineNumberNodes, but
@@ -28,6 +60,14 @@ stripmeta(expr::Expr) = Expr(expr.head, stripmeta(expr.args)...)
 stripmeta(expr::Array) = map(stripmeta,
   filter(x -> !isa(x, LineNumberNode), expr))
 stripmeta(expr) = expr
+
+"""
+determine if we're dealing with a form.
+For various reader contexts. It's a lot less characters to type isform(sexp)
+then the longer expression on the right, and it allows a consistent place
+to define the idea of a form.
+"""
+isform(sexp) = isa(sexp, Tuple) || isa(sexp, Array)
 
 
 """
@@ -43,9 +83,12 @@ tosexp(ex::Expr) = Any[ex.head, map(tosexp, ex.args)...]
 # expr-family objects into a sexpr, in which case you'd see [:quote, :x] there.
 tosexp(ex) = ex
 
-isform(sexp) = isa(sexp, Tuple) || isa(sexp, Array)
-
-delevel(ex::Array{Expr}) = mapcat(delevel, ex)
+"""
+delevel takes any Expr(:toplevel, ...) and expands it out, giving you an array.
+made to be called in Transpile.transpiler, it's the last step of the processing
+pipeline (so far).
+"""
+delevel(ex::Array) = mapcat(delevel, ex)
 function delevel(ex::Expr)
   if ex.head == :toplevel
     ex.args
@@ -53,6 +96,7 @@ function delevel(ex::Expr)
     [ex]
   end
 end
+delevel(ex) = ex
 
 
 """
@@ -97,4 +141,3 @@ end
 # end
 
 end
-

@@ -56,17 +56,6 @@ isset(args, flag) = haskey(args, flag) &&
   elseif isa(args[flag], Union{Array, Tuple}) length(args[flag]) > 0
   else true
   end
-  
-function finddir(dir::AbstractString)
-  for path in readdir(dir)
-    fullpath = joinpath(dir, path)
-    if isfile(fullpath)
-      produce(fullpath)
-    elseif isdir(fullpath)
-      finddir(fullpath)
-    end
-  end
-end
 
 processfile(transpile::Function, program::AbstractString, lines::Int = 1) =
   processfile(STDOUT, transpile, program, lines)
@@ -74,7 +63,7 @@ function processfile(io::IO,
                      transpile::Function,
                      program::AbstractString,
                      lines::Int = 1)
-  for form in Util.delevel(transpile(program))
+  for form in transpile(program)
     println(io, form)
     print(io, repeat("\n", lines))
   end
@@ -131,7 +120,7 @@ function main()
         elseif isdir(path)
           # filter extensions? (-e option to set extensions)
           #
-          for file in Task(() -> finddir(path))
+          for file in Task(() -> Util.finddir(path))
             outfile = open(joinpath(parsedargs[:output][1],
                                file[length(path)+1:end]), "w")
             info("writing $outfile")

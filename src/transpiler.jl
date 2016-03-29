@@ -12,10 +12,10 @@ import .Util
 export transpile, lisp_str
 
 transpile(str::AbstractString) =
-  map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...))
+  Util.delevel(map(x -> Reader.read(x...), zip(Parser.parsesexp(str)...)))
 
 detranspile(ex, toplevel=false) =
-  CLJReader.read(Util.stripmeta(Util.tosexp(ex)), toplevel)
+  CLJReader.read(Util.tosexp(Util.stripmeta(ex)), toplevel)
 
 macro clj_str(str::AbstractString)
   transpile(str)
@@ -26,3 +26,4 @@ macro jl(ex::Expr)
 end
 
 end
+
