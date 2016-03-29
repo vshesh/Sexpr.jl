@@ -17,20 +17,41 @@ include("util.jl")
 using .Util.mapcat
 using .Util.isform
 
-read(s) = string(s)
-read(s::Void) = "nil"
-read(s::Bool) = string(s)
-read(s::Symbol) = string(s)
-read(s::AbstractString) = string("\"", escape_string(s), "\"")
+read(s, t::Bool=false) = string(s)
+read(s::Void, t::Bool=false) = "nil"
+#read(s::Bool) = string(s)
 
-read(n::Union{Int, Int8, Int16, Int32, Int64, Int128, BigInt}) = string(n)
-read(n::Union{UInt, UInt8, UInt16, UInt32, UInt64, UInt128}) = string("0x",base(16,n))
-read(n::Union{Float16, Float32, Float64, BigFloat}) = string(n)
-read(n::Union{Rational, Complex}) = string(n)
-# TODO - keywords!?
-# They are Expr(:quote, Symbol)s, but it's impossible then to tell a quoted var
-# from a keyword.
+#= Numbers =#
+#read(n::Union{Int, Int8, Int16, Int32, Int64, Int128, BigInt}) = string(n)
+#read(n::Union{Float16, Float32, Float64, BigFloat}) = string(n)
+read(n::Union{UInt, UInt8, UInt16, UInt32, UInt64, UInt128}, t::Bool=false) =
+  string("0x",base(16,n))
+read(r::Rational, t::Bool=false) = string(read(r.num, t), "/", read(r.den, t))
 
+#= Characters, doesn't handle unicode and such. =#
+function read(c::Char, t::Bool=false)
+  if c == '\n'
+    return "\\newline"
+  elseif c == ' '
+    return "\\space"
+  elseif c == '\t'
+    return "\\tab"
+  elseif c == '\f'
+    return "\\formfeed"
+  elseif c == '\b'
+    return "\\backspace"
+  elseif c == '\r'
+    return "\\return"
+  else
+    return string("\\",c)
+  end
+end
+#= Strings =#
+read(s::AbstractString, t::Bool=false) = string("\"", escape_string(s), "\"")
+#= keywords =#
+read(k::QuoteNode, t::Bool=false) = string(":", read(k.value))
+#= symbols =#
+read(s::Symbol, t::Bool=false) = s == :nothing ? "nil" : string(s)
 
 """
 Use Util.tosexp in src/util.jl which will take an expression
@@ -46,7 +67,7 @@ Expression heads that are not being handled here:
     support reading raw julia files (that weren't first translated from
     s-expression syntax). This is NOT a priority though.
 """
-function read(sexp::Array, toplevel=false)
+function read(sexp::Array, toplevel::Bool=false)
   # empty list
   if sexp[1] == :tuple && length(sexp) == 1
     return ()
@@ -140,7 +161,13 @@ function read(sexp::Array, toplevel=false)
     return ("or", map(read, sexp[2:end])...)
   end
 
-
+  # Special Atoms
+  # :// -> rational const.
+  if sexp[1] == :call && sexp[2] == ://
+    return string(read(sexp[3], toplevel), "/", read(sexp[4], toplevel))
+  end
+  
+  # Literals
   # :vect -> [] (vector literal)
   if sexp[1] == :vect
     return (:vect, map(read, sexp[2:end])...)
@@ -155,15 +182,15 @@ function read(sexp::Array, toplevel=false)
   if sexp[1] == :call && isform(sexp[2]) && sexp[2][1] == :.
     return (join(read(sexp[2])[2:end], "."), map(read, sexp[3:end])...)
   end
+  
   # :macrocall -> (@macro ) (macro application)
+  
+  
   # :call -> (f a b) (function call)
-  if sexp[1] == :call || sexp[1] == :macrocall
+  if sexp[1] == :call
     return (map(read, sexp[2:end])...)
   end
 
-  # Special Atoms
-  # :// -> rational const.
-  #
 end
 
 end

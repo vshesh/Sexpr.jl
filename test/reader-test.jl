@@ -2,7 +2,7 @@ module ReaderTest
 
 using FactCheck
 
-include("test-util.jl")
+include("testutil.jl")
 
 include("../src/parser.jl")
 include("../src/transpiler.jl")
@@ -46,7 +46,7 @@ function test(line)
 end
 
 TestUtil.testdir(
-  joinpath(dirname(@__FILE__), "testfiles"),
+  joinpath(dirname(@__FILE__), "cljfiles"),
   (x) -> true,
   test)
 
