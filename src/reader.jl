@@ -271,6 +271,7 @@ forms are evaluated. It's a subtle difference in the way the recursion tree
 is handled, but what seems like repetition of code is unforunately necessary.
 """
 function readquoted(sexp, meta)
+  # TODO needs to handle unquoting too! 
   if isform(sexp)
     # TODO move the reading of VECID/DICTID type deals to a readliteral
     # function which is called from read if the first element of the form

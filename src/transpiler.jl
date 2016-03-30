@@ -27,8 +27,9 @@ It might be necessary to write out meta information to the macro so that when
 something is returned we get something we can rehydrate easily.
 That's probably the best solution.
 
-For interpolated values, we can give -1 or something as a line number right now.
-Macros are really complicated!
+There needs to be a version of read that can operate without giving errors.
+Even in julia itself, macro errors are completely funky wrt line numbers.
+
 """
 rehydrate(ex) = Transpiler.transpile(Util.oneline(CLJReader.readquoted(ex)))
 

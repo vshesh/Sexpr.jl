@@ -230,7 +230,6 @@ function readquoted(sexp)
       map(readquoted, sexp)
     end
   else
-
     # strip the \blockfull character from all RESERVED_WORDS
     if isa(sexp, Symbol)
       s = string(sexp)
