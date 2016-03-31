@@ -112,6 +112,7 @@ function escapesym(form, unicode=true)
   return str
 end
 
+
 function unescapesym(form::AbstractString, unicode=true)
   str = form
   if unicode
@@ -172,10 +173,10 @@ to define the idea of a form.
 """
 isform(sexp) = isa(sexp, Tuple) || isa(sexp, Array)
 
-"""tests if some s-expression is a symbol or not."""
-issymbol(sexp) = isa(sexp, AbstractString) &&
-  sexp != "nil" && sexp != "true" && sexp != "false" &&
-  !isdigit(sexp[1]) && sexp[1] != '"' && (length(sexp) == 1 || sexp[1] != '\\')
+# """tests if some s-expression is a symbol or not."""
+# issymbol(sexp) = isa(sexp, AbstractString) &&
+#   sexp != "nil" && sexp != "true" && sexp != "false" &&
+#   !isdigit(sexp[1]) && sexp[1] != '"' && (length(sexp) == 1 || sexp[1] != '\\')
 
 """
 tosexp takes a julia expression and outputs it as a tuple s-expression form.

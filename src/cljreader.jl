@@ -75,7 +75,12 @@ function read(sexp::Array, toplevel::Bool=false)
 
   # :block -> do
   if sexp[1] == :block
-    if length(sexp) == 2
+    if length(sexp) == 1
+      # (do) -> nil, which I guess is a tiny optimization.
+      # it avoids weirdnesses like function(x) end -> (fn [x] (do)), which is
+      # bizzare. Better to have  (fn [x] nil) instead.
+      return "nil"
+    elseif length(sexp) == 2
       return read(sexp[2])
     else
       return ("do", map(read, sexp[2:end])...)
@@ -95,25 +100,32 @@ function read(sexp::Array, toplevel::Bool=false)
 
   # :let -> let
   if sexp[1] == :let
-    # pass
+    return ("let",
+            (:vect, mapcat(e->map(read, e[2:end]), sexp[3:end])...),
+            read(sexp[2]))
   end
 
   # :function -> fn (or defn? This is a problem.)
   if sexp[1] == :function
-    # pass
+    # sexp[2] is either :call or :tuple
+    body = read(sexp[3])
+    if sexp[2][1] == :tuple
+      # this is an anonymous function
+      return ("fn", (:vect, map(read, sexp[2][2:end])...),
+              (body[1] == "do" ? body[2:end] : [body])... )
+    else
+      # this is a named function
+      return (toplevel ? "defn" : "fn",
+              read(sexp[2][2]), (:vect, map(read, sexp[2][3:end])...),
+              (body[1] == "do" ? body[2:end] : [body])... )
+    end
   end
   
   # :-> -> fn
   if sexp[1] == :->
     # if the next element is a single symbol, wrap it in a tuple.
-    args = sexp[2]
-    if isa(args, Symbol)
-      args = (VECID, args)
-    else
-      args[1] = VECID
-    end
     return ("fn",
-            isa(args, Symbol) ? (:vect, read(args)) : (:vect, map(read, args[2:end])...),
+            isa(sexp[2], Symbol) ? (:vect, read(sexp[2])) : (:vect, map(read, sexp[2][2:end])...),
             read(sexp[3]))
   end
   # := -> def
