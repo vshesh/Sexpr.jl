@@ -5,6 +5,7 @@ using FactCheck
 include("testutil.jl")
 
 include("../src/parser.jl")
+include("../src/reader.jl")
 include("../src/transpiler.jl")
 include("../src/util.jl")
 using .Util.tosexp
@@ -45,9 +46,32 @@ function test(line)
         "expected $(tosexp(actual)) === $(tosexp(expected))")
 end
 
+
 TestUtil.testdir(
   joinpath(dirname(@__FILE__), "cljfiles"),
   (x) -> true,
   test)
+
+
+# Error testing
+facts("macro forms with more than two forms") do
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["`", "x", "y"], Any[(1,1),(1,1),(1,1)])
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["def"], Any[(1,1)])
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["if", "test"], Any[(1,1), (1,1)])
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["let"], Any[(1,1), (1,1)])
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any[:dict, "1"], Any[(1,1), (1,1)])
+  @fact_throws Reader.Errors.InvalidFormStructureError Reader.read(Any["curly", Any["let"]], Any[(1,1), Any[(1,1)]])
+
+  @fact_throws Reader.Errors.InvalidFormCountError Reader.readquoted(Any[:dict, "1"], Any[(1,1), (1,1)])
+
+  @fact_throws Reader.Errors.InvalidTokenError Reader.readatom(":x.y", (1,1))
+  
+  @fact_throws Reader.Errors.InvalidFormStructureError Reader.read(Any["fn", "name", "doc", "oops"], Any[(1,1), Any[(1,1)]])
+  
+  # TODO this shouldn't be true, env vars in clojure look like *out* and things.
+  @fact_throws Reader.Errors.InvalidTokenError Reader.readsym("*x*", (1,1))
+  
+  
+end
 
 end

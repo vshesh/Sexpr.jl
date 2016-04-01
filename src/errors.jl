@@ -1,7 +1,8 @@
 module Errors
 
+export WrappedException
 export ExtraError, MismatchedError, UnclosedError
-export InvalidTokenError, InvalidFormCountError, WrappedException
+export InvalidTokenError, InvalidFormCountError, InvalidFormStructureError
 
 """
 Reader error types.

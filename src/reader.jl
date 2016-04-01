@@ -208,7 +208,7 @@ function readform(sexp, meta)
   if sexp[1] == "curly"
     for i in 2:length(sexp)
       if isform(sexp[i]) && sexp[i][1] != "curly"
-        throw(InvalidFormStructureError(meta[i], "curly", sexp,
+        throw(InvalidFormStructureError(meta[i][1]..., "curly", sexp,
           string("curly forms can only have other curly forms as subexpressions.",
                  "Found a $(sexp[i][1]) form at position $i instead.")))
       end
@@ -346,7 +346,7 @@ function readfunc(sexp, meta)
   # match. It's being implicitly done by the other read functions, but
   # prechecking will allow for a better error message than "Invalid Token"
   # which can be cryptic if you don't know what's going on.
-  if isa(sexp[2], Array) && sexp[2][1] == VECID
+  if length(sexp) >= 2 && isa(sexp[2], Array) && sexp[2][1] == VECID
     # (fn [x] body)
     # small optimization. If it's an anonymous function with only one
     # term in the body, replace with -> syntax.
@@ -361,14 +361,14 @@ function readfunc(sexp, meta)
                   Expr(:tuple, map(readsym, sexp[2][2:end], meta[2][2:end])...),
                   Expr(:block, map(read, sexp[3:end], meta[3:end])...))
     end
-  elseif isa(sexp[3], Array) && sexp[3][1] == VECID
+  elseif length(sexp) >= 3 && isa(sexp[3], Array) && sexp[3][1] == VECID
     # (fn name [x] body)
     return Expr(:function,
                 Expr(:call,
                      readsym(sexp[2], meta[2]),
                      map(readsym, sexp[3][2:end], meta[3][2:end])...),
                 Expr(:block, map(read, sexp[4:end], meta[4:end])...))
-  elseif isa(sexp[4], Array) && sexp[4][1] == VECID
+  elseif length(sexp) >= 4 && isa(sexp[4], Array) && sexp[4][1] == VECID
     # as of now, docstrings are ignored
     # in reality, we'd want to emit 2 forms here, one for the docstring,
     # and one for the function. There's no way to do that without the
@@ -552,7 +552,7 @@ function readnumber(str, meta)
         rethrow(a)
       end
     end
-  elseif ismatch(r"^-?[0-9]+(\.[0-9]+)?([fe]-?[0-9]+)?$", str)
+  elseif ismatch(r"^-?[0-9]+(\.[0-9]+)?(e-?[0-9]+)?$", str)
     try
       # it's possible to still have a malformatted number
       parse(Float64, str)
@@ -564,16 +564,8 @@ function readnumber(str, meta)
       end
     end
   elseif ismatch(r"^-?([0-9]+)/([0-9]+)", str)
-    try
-      p = split(str, '/')
-      //(readint(p[1], meta), readint(p[2], meta))
-    catch a
-      if isa(a, ArgumentError)
-        throw(WrappedException(meta...,a))
-      else
-        rethrow(a)
-      end
-    end
+    p = split(str, '/')
+    //(readint(p[1], meta), readint(p[2], meta))
   else
     throw(InvalidTokenError(meta...,str))
   end
