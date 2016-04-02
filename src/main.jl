@@ -6,7 +6,6 @@
 #
 # This is the file that contains the tool that is run on the command line.
 
-
 using ArgParse
 include("transpiler.jl")
 include("util.jl")

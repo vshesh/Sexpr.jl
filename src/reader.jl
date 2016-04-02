@@ -262,7 +262,7 @@ readquoted does the same thing as read but quotes the whole thing, for
 macrocall purposes.
 
 eg: read(["if", "true", "1", "0"]) -> :(true ? 1 : 0)
-    readasatoms(["if", "true", "1", "0"]) -> [:if, true, 1, 0]
+    readquoted(["if", "true", "1", "0"]) -> [:if, true, 1, 0]
 
 In some sense, this is just a subset of read with the special forms removed,
 and only literals and atoms included. However, the difference here is
@@ -289,20 +289,21 @@ function readquoted(sexp, meta)
       else
         Expr(:call, :Dict,
               map(x -> Expr(:(=>), x...),
-                  partition(2, map(read,sexp[2:end], meta[2:end])))...)
+                  partition(2, map(readquoted,sexp[2:end], meta[2:end])))...)
       end
     else
       Expr(:tuple, map(readquoted, sexp, meta)...)
     end
   else
-    if isa(sexp, AbstractString) && sexp in Util.RESERVED_WORDS
-      # there are no dots or other weirdnesses, it's just a straight word.
-      return symbol(string('█', sexp))
+    a = readatom(sexp, meta)
+    if isa(a, Symbol) || (isa(a, Expr) && a.head == :quote)
+      Expr(:quote, a)
     else
-      readatom(sexp, meta)
+      a
     end
   end
 end
+
 
 """
 reads only an atom. Should be passed one stringified atom and one meta object.
