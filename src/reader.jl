@@ -290,9 +290,9 @@ function readquoted(sexp, meta)
     # handle unquoting too!
     if sexp[1] == "~"
       # we need to read rather than readquoted the form next to this one
-      read(sexp[2], meta[2])
-    # elseif sexp[1] == "~@"
-    #   Expr(:..., Expr(:tuple, map(readquoted, sexp[2:end], meta[2:end])...))
+      Expr(:call, :eval, read(sexp[2], meta[2]))
+    elseif sexp[1] == "~@"
+      Expr(:..., Expr(:call, :eval, read(sexp[2], meta[2])))
     elseif sexp[1] == VECID
       Expr(:vect, [readquoted(sexp[i], meta[i]) for i in 2:length(sexp)]...)
     elseif sexp[1] == DICTID
