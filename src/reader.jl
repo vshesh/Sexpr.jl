@@ -60,7 +60,7 @@ function readform(sexp, meta)
       return Expr(:$, read(sexp[2], meta[2]))
 
     elseif sexp[1] == "~@"
-      return Expr(:$, Expr(:tuple, Expr(:..., read(sexp[2], meta[2]))))
+      return Expr(:..., Expr(:$, read(sexp[2], meta[2])))
     end
   end
 
@@ -174,6 +174,21 @@ function readform(sexp, meta)
   # include is a function, so it's fine
   
   
+  # # "get" operator (:ref in julia)
+  # if sexp[1] == "aget"
+  #   # surprisingly, a[] == a[1] in julia, which I consider strange.
+  #   return Expr(:ref, map(read, sexp[2:end], meta[2:end])...)
+  # end
+  # # : colon operator, for the purpose of slices and ranges
+  # if sexp[1] == ":"
+  #   if length(sexp) < 3
+  #     throw(InvalidFormCountError(meta[1]..., ":", sexp,
+  #                                 "at least 3 forms", "$(length(sexp))"))
+  #   end
+  #   return Expr(:(:), map(read, sexp[2:end], meta[2:end])...)
+  # end
+  
+  
   # for
   # try/catch
   # deftype -> type
@@ -271,12 +286,14 @@ forms are evaluated. It's a subtle difference in the way the recursion tree
 is handled, but what seems like repetition of code is unforunately necessary.
 """
 function readquoted(sexp, meta)
-  # TODO needs to handle unquoting too!
   if isform(sexp)
-    # TODO move the reading of VECID/DICTID type deals to a readliteral
-    # function which is called from read if the first element of the form
-    # is not a string.
-    if sexp[1] == VECID
+    # handle unquoting too!
+    if sexp[1] == "~"
+      # we need to read rather than readquoted the form next to this one
+      read(sexp[2], meta[2])
+    # elseif sexp[1] == "~@"
+    #   Expr(:..., Expr(:tuple, map(readquoted, sexp[2:end], meta[2:end])...))
+    elseif sexp[1] == VECID
       Expr(:vect, [readquoted(sexp[i], meta[i]) for i in 2:length(sexp)]...)
     elseif sexp[1] == DICTID
       # MUST have pairs of operations
@@ -295,11 +312,12 @@ function readquoted(sexp, meta)
       Expr(:tuple, map(readquoted, sexp, meta)...)
     end
   else
-    a = readatom(sexp, meta)
-    if isa(a, Symbol) || (isa(a, Expr) && a.head == :quote)
-      Expr(:quote, a)
-    else
-      a
+    let a = readatom(sexp, meta)
+      if isa(a, Symbol) || (isa(a, Expr) && a.head == :quote)
+        Expr(:quote, a)
+      else
+        a
+      end
     end
   end
 end
@@ -428,6 +446,8 @@ function readsym(form, meta, unicode=true)
                     "|~|&|\\||\\\$|(?:>>)|(?:<<)|(?:>>>)",
                     # (comparison) ==, !=, <, >, <=, >=,
                     "|(?:==)|(?:!=)|<|>|(?:<=)|(?:>=)",
+                    # others (eg array slice)
+                    "|:",
                     ")\$"
                     )
   if length(form) < 4 && match(Regex(validops), form) != nothing

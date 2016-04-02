@@ -243,13 +243,8 @@ function readquoted(sexp)
     end
   else
     # strip the \blockfull character from all RESERVED_WORDS
-    if isa(sexp, Symbol)
-      s = string(sexp)
-      if startswith(s, '█') &&
-         # blockfull character apparently takes up 3 characters
-         convert(ASCIIString, s[4:end]) in Util.RESERVED_WORDS
-        convert(ASCIIString, s[4:end])
-      end
+    if isa(sexp, Expr) && sexp.head == :quote
+      read(sexp.args[end])
     else
       read(sexp)
     end
