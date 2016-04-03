@@ -47,13 +47,13 @@ function readform(sexp, meta)
     # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
     # `x, but outside of that they both are :x, which is a wierd quirk of
     # julia macros.
-    if sexp[1] in ("'", "`", "quote")
+    if sexp[1] in ("`")
       # TODO quote needs to be split to escape everything,
       # but `esc` is a complex beast in julia.
       if isform(sexp[2])
         return Expr(:tuple, map(readquoted, sexp[2], meta[2])...)
       else
-        return Expr(:quote, readquoted(sexp[2], meta[2]))
+        return readquoted(sexp[2], meta[2])
       end
 
     elseif sexp[1] == "~"
@@ -314,7 +314,7 @@ function readquoted(sexp, meta)
   else
     let a = readatom(sexp, meta)
       if isa(a, Symbol)
-        QuoteNode(a) 
+        QuoteNode(a)
       elseif (isa(a, Expr) && a.head == :quote)
         Expr(:quote, a)
       else
