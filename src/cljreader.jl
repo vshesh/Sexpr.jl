@@ -196,6 +196,10 @@ function read(sexp::Array, toplevel::Bool=false)
   if sexp[1] == :call && sexp[2] == ://
     return string(read(sexp[3], toplevel), "/", read(sexp[4], toplevel))
   end
+  # :quote -> Symbol (keyword)
+  if sexp[1] == :quote && isa(sexp[2], Symbol)
+    return string(":",read(sexp[2]))
+  end
   
   # Literals
   # :vect -> [] (vector literal)
