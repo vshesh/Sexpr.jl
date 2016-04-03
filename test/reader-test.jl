@@ -54,7 +54,7 @@ TestUtil.testdir(
 
 
 # Error testing
-facts("macro forms with more than two forms") do
+facts("Incorrect Number/Structure of Forms Test") do
   @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["`", "x", "y"], Any[(1,1),(1,1),(1,1)])
   @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["def"], Any[(1,1)])
   @fact_throws Reader.Errors.InvalidFormCountError Reader.read(Any["if", "test"], Any[(1,1), (1,1)])
@@ -69,7 +69,7 @@ facts("macro forms with more than two forms") do
   @fact_throws Reader.Errors.InvalidFormStructureError Reader.read(Any["fn", "name", "doc", "oops"], Any[(1,1), Any[(1,1)]])
   
   # TODO this shouldn't be true, env vars in clojure look like *out* and things.
-  @fact_throws Reader.Errors.InvalidTokenError Reader.readsym("*x*", (1,1))
+  @fact_throws Reader.Errors.InvalidTokenError Reader.readsym("+x*", (1,1))
   
   
 end

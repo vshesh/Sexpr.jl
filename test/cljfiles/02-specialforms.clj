@@ -79,6 +79,8 @@ Defn
 (defn f "doc" [x y] (+ x y)) ||| Any["defn", "f", "\"doc\"", Any[:vect, "x", "y"], Any["+", "x", "y"]] ||| :(function f(x,y) x+y end)
 (defn f "doc" [x y] (inc x) (+ x y)) ||| Any["defn", "f", "\"doc\"", Any[:vect, "x", "y"], Any["inc", "x"], Any["+", "x", "y"]] ||| :(function f(x,y) inc(x); x+y end)
 
+; ---------------------------------- JULIA FORMS ---------------------------
+
 Typing forms (::, curly)
 ;; Contains special forms that derive from julia, not clojure
 (:: x Int) ||| Any["::", "x", "Int"] ||| :(x::Int)
@@ -91,6 +93,13 @@ Dot access/call
 (.x symbol) ||| Any[".x", "symbol"] ||| :(symbol.x())
 (. x a b c d) ||| Any[".", "x", "a", "b", "c", "d"] ||| :(x.a.b.c.d)
 
+Module related
+(module M) ||| Any["module", "M"] ||| :(module M end)
+(import X y z a) ||| Any["import", "X", "y", "z", "a"] ||| :(import X.y.z.a)
+(use X y z a) ||| Any["use", "X", "y", "z", "a"] ||| :(using X.y.z.a)
+(export X y z a) ||| Any["export", "X", "y", "z", "a"] ||| :(export X,y,z,a)
+
+; ----------------------------------- MACRO FORMS ---------------------------
 
 Macro call
 ; needs to work with literals, nested data structures, and nested forms.
@@ -101,3 +110,5 @@ Macro call
 Quoting/Unquoting
 (quote x) ||| Any["quote", "x"] ||| :(:x)
 '(x) ||| Any["'", Any["x"]] ||| :((:x,))
+`(~x) ||| Any["`", Any[Any["~", "x"]]] ||| :((eval(x),))
+`(if ~x true (max ~@y)) ||| Any["`", Any["if", Any["~", "x"], "true", Any["max", Any["~@", "y"]]]] ||| :((:if, eval(x), true, (:max, eval(y)...)))
