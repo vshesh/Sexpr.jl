@@ -48,6 +48,8 @@ function() end ||| (fn [] nil)
 function(x) x + 1 end ||| (fn [x] (+ x 1))
 function(x) x+1;x+5; end ||| (fn [x] (+ x 1) (+ x 5))
 
+# ------------------- JULIA FORMS --------------------------
+
 :call>:. (dot call syntax)
 x.y() ||| (x.y)
 x().y() ||| ((. (x) y))
@@ -61,6 +63,15 @@ x(1,2).y.z ||| (. (x 1 2) y.z)
 x::Int ||| x::Int
 x::Int::Int64 ||| x::Int::Int64
 x::Array{Int} ||| (:: x (curly Array Int))
+
+module related
+module M end ||| (module M)
+module M x->x+1 end ||| (module M (fn [x] (+ x 1)))
+import X.y.z.a ||| (import X y z a)
+export X, y, z, a ||| (export X y z a)
+using X.y.z.a ||| (use X y z a)
+
+# -------------------------- MACROS -------------------------
 
 :macrocall
 @m 1 ||| (@m 1)

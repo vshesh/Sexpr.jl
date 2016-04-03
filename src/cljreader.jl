@@ -150,19 +150,19 @@ function read(sexp::Array, toplevel::Bool=false)
   # module related
   # module
   if sexp[1] == :module
-    return ("module", map(read, sexp[2:end], meta[2:end])...)
+    return ("module", read(sexp[3]), map(read, sexp[4][4:end])...)
   end
   # import
   if sexp[1] == :import
-    return ("import", map(read, sexp[2:end], meta[2:end])...)
+    return ("import", map(read, sexp[2:end])...)
   end
   # using
   if sexp[1] == :using
-    return ("use", map(read, sexp[2:end], meta[2:end])...)
+    return ("use", map(read, sexp[2:end])...)
   end
   # export
   if sexp[1] == :export
-    return ("export", map(read, sexp[2:end], meta[2:end])...)
+    return ("export", map(read, sexp[2:end])...)
   end
   
   

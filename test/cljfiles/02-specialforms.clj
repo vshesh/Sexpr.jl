@@ -82,11 +82,10 @@ Defn
 ; ---------------------------------- JULIA FORMS ---------------------------
 
 Typing forms (::, curly)
-;; Contains special forms that derive from julia, not clojure
 (:: x Int) ||| Any["::", "x", "Int"] ||| :(x::Int)
 (:: x (curly Union Int Int64)) ||| Any["::", "x", Any["curly", "Union", "Int", "Int64"]] ||| :(x::Union{Int, Int64})
 (:: x Int Int64) ||| Any["::", "x", "Int", "Int64"] ||| :(x::Union{Int, Int64})
-;(:: x Int Int64 Int128) ||| Any["::", "x", "Int", "Int64", "Int128"] ||| :(x::Union{Int, Int64, Int128})
+(:: x Int Int64 Int128) ||| Any["::", "x", "Int", "Int64", "Int128"] ||| :(x::Union{Int, Int64, Int128})
 
 Dot access/call
 ; there are a lot of issues with expr equality in julia.
@@ -95,6 +94,7 @@ Dot access/call
 
 Module related
 (module M) ||| Any["module", "M"] ||| :(module M end)
+(module M (fn [x] (+ x 1))) ||| Any["module", "M", Any["fn", Any[:vect, "x"], Any["+", "x", "1"]]] ||| :(module M (x,)->x+1 end)
 (import X y z a) ||| Any["import", "X", "y", "z", "a"] ||| :(import X.y.z.a)
 (use X y z a) ||| Any["use", "X", "y", "z", "a"] ||| :(using X.y.z.a)
 (export X y z a) ||| Any["export", "X", "y", "z", "a"] ||| :(export X,y,z,a)
