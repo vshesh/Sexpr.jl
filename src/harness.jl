@@ -12,7 +12,13 @@ using ArgParse
 include("transpiler.jl")
 include("util.jl")
 
-function getopts(args)
+function error_handler(settings::ArgParseSettings, err, err_code::Int=1, io::IO=STDERR)
+  println(io, err.text)
+  println(io, usage_string(settings))
+  exit(err_code)
+end
+
+function getopts(args, io::IO=STDERR)
   s = ArgParseSettings()
   s.prog="s-julia"
   s.description="
@@ -20,6 +26,7 @@ function getopts(args)
     julia. By default, this program takes clojure syntax and outputs
     the julia version. Use -i to flip direction."
   s.autofix_names = true
+  s.exc_handler = (s,e,c) -> error_handler(s, e, c, io)
 
 
   @add_arg_table s begin
@@ -27,7 +34,7 @@ function getopts(args)
       help = "take julia code and print out s-expression code"
       action = :store_true
     "--cat", "-c"
-      help = "cat all the input from STDIN rather than read from file. Ignores all arguments to the program."
+      help = "cat all the input from STDIN rather than read from file. Ignores all positional args to the program."
       action = :store_true
     "--lines", "-l"
       help = "how many blank lines should exist between top level forms, default 1"
@@ -81,11 +88,11 @@ const DEBUG = false
 
 function main(io::IO=STDOUT)
   if length(ARGS) == 0
-    getopts(["-h"])
+    getopts(["-h"], io)
   end
   
   # configure parsedargs
-  parsedargs = getopts(ARGS)
+  parsedargs = getopts(ARGS, io)
   DEBUG && info(parsedargs)
   
   isflagset = flag -> isset(parsedargs, flag)

@@ -68,6 +68,17 @@ Expression heads that are not being handled here:
     s-expression syntax). This is NOT a priority though.
 """
 function read(sexp::Array, toplevel::Bool=false)
+  # Special Atoms
+  # :// -> rational const.
+  if sexp[1] == :call && sexp[2] == ://
+    return string(read(sexp[3], toplevel), "/", read(sexp[4], toplevel))
+  end
+  # :quote -> Symbol (keyword)
+  if sexp[1] == :quote && isa(sexp[2], Symbol)
+    return string(":",read(sexp[2]))
+  end
+  
+
   # empty list
   if sexp[1] == :tuple && length(sexp) == 1
     return ()
@@ -137,13 +148,6 @@ function read(sexp::Array, toplevel::Bool=false)
 
   # Macro special forms
   # :macro -> macro definitions should be ignored for now
-  if sexp[1] == :macro
-    return ("defmacro",)
-  end
-  # :quote -> `() (quote is *actually* syntax-quote)
-  # esc -> ~'? resolves the symbol without gensymming.
-  # :$>:tuple>:... unquote splice ~@
-  # :$ unquote ~
 
   # Julia Special Forms
   
@@ -211,16 +215,7 @@ function read(sexp::Array, toplevel::Bool=false)
     return ("or", map(read, sexp[2:end])...)
   end
 
-  # Special Atoms
-  # :// -> rational const.
-  if sexp[1] == :call && sexp[2] == ://
-    return string(read(sexp[3], toplevel), "/", read(sexp[4], toplevel))
-  end
-  # :quote -> Symbol (keyword)
-  if sexp[1] == :quote && isa(sexp[2], Symbol)
-    return string(":",read(sexp[2]))
-  end
-  
+
   # Literals
   # :vect -> [] (vector literal)
   if sexp[1] == :vect
