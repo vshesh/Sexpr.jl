@@ -6,6 +6,8 @@
 #
 # This is the file that contains the tool that is run on the command line.
 
+module Harness
+
 using ArgParse
 include("transpiler.jl")
 include("util.jl")
@@ -77,7 +79,7 @@ end
 
 const DEBUG = false
 
-function main()
+function main(io::IO=STDOUT)
   if length(ARGS) == 0
     getopts(["-h"])
   end
@@ -102,7 +104,7 @@ function main()
 
   if isflagset(:cat) || length(parsedargs[:files]) == 0
     DEBUG && info("mode: cat - reading from STDIN")
-    process(STDOUT, readall(STDIN))
+    process(io, readall(STDIN))
   else
     if length(parsedargs[:files]) > 1 && !isflagset(:output)
       error("There must be an output directory to process multiple files.")
@@ -112,7 +114,7 @@ function main()
       !isflagset(:output)
       DEBUG && info("mode: single file STDOUT")
       # it's okay to have only 1 file - if no output,then dump to STDOUT
-      process(STDOUT, readall(parsedargs[:files][1]))
+      process(io, readall(parsedargs[:files][1]))
     else
       DEBUG && info("mode: files to output directory $(parsedargs[:output][1])")
       # have nonzero files and output is set.
@@ -139,4 +141,4 @@ function main()
   end
 end
 
-main()
+end
