@@ -54,7 +54,8 @@ type InvalidFormStructureError <: Exception
 end
 Base.showerror(io::IO, e::InvalidFormStructureError) =
   print(io,
-        "$(typeof(e)) at line $(e.lineno):$(e.colno), $(e.message): $(e.form)")
+        string("$(typeof(e)) at line $(e.lineno):$(e.colno) ",
+        "in $(e.kind) expression, $(e.message): $(e.form)"))
 
 type InvalidFormCountError <: Exception
   lineno::Int

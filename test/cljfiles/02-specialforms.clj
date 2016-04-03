@@ -99,7 +99,5 @@ Macro call
 (@m (:html {1 2})) ||| Any["@m", Any[":html", Any[:dict, "1", "2"]]] ||| :(@m ($(Expr(:quote, Expr(:quote, :html))), Dict(1 => 2)))
 
 Quoting/Unquoting
-(quote x) ||| Any["quote", "x"] ||| :($(Expr(:quote, :(:x))))
+(quote x) ||| Any["quote", "x"] ||| :(:x)
 '(x) ||| Any["'", Any["x"]] ||| :((:x,))
-~x ||| Any["~", "x"] ||| Expr(:$, :x)
-~@x ||| Any["~@", "x"] ||| Expr(:$, Expr(:tuple, Expr(:..., :x)))

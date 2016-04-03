@@ -47,7 +47,7 @@ function readform(sexp, meta)
     # inside a macro expression, you can do esc(:x) to mean 'x, and :x to mean
     # `x, but outside of that they both are :x, which is a wierd quirk of
     # julia macros.
-    if sexp[1] in ("`")
+    if sexp[1] in ("'", "`", "quote")
       # TODO quote needs to be split to escape everything,
       # but `esc` is a complex beast in julia.
       if isform(sexp[2])
@@ -55,12 +55,12 @@ function readform(sexp, meta)
       else
         return readquoted(sexp[2], meta[2])
       end
-
-    elseif sexp[1] == "~"
-      return Expr(:$, read(sexp[2], meta[2]))
-
-    elseif sexp[1] == "~@"
-      return Expr(:..., Expr(:$, read(sexp[2], meta[2])))
+    
+    # it does not make sense to encounter ~ or ~@ outside of a quoted form.
+    # in this case, the correct thing to do is to throw and error
+    elseif sexp[1] == "~" || sexp[1] == "~@"
+      throw(InvalidFormStructureError(meta[1]..., sexp[1], sexp,
+            "unquote expression found outside of quote expression."))
     end
   end
 
