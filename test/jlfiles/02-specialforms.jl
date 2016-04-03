@@ -65,6 +65,6 @@ x::Array{Int} ||| (:: x (curly Array Int))
 :macrocall
 @m 1 ||| (@m 1)
 @m [1, 2, 3] ||| (@m [1 2 3])
-@m (:html, Dict(1=>2)) ||| (@m (:html {1 2}))
+@m (:(:html), Dict(1=>2)) ||| (@m (:html {1 2}))
 @m 1 2 3 ||| (@m 1 2 3)
 @m (:if, true, 1, 0) ||| (@m (if true 1 0))

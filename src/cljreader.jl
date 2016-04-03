@@ -206,6 +206,9 @@ function read(sexp::Array, toplevel::Bool=false)
   if sexp[1] == :call && sexp[2] == :Dict
     return (:dict, map(read,mapcat(x->x[2:end], sexp[3:end]))...)
   end
+  if sexp[1] == :tuple
+    return (map(read, sexp[2:end])...)
+  end
 
 
   # :call>:. -> (.b a) (dot-call syntax)
@@ -232,7 +235,10 @@ function readquoted(sexp)
     # TODO move the reading of VECID/DICTID type deals to a readliteral
     # function which is called from read if the first element of the form
     # is not a string.
-    if sexp[1] == :vect
+    if sexp[1] == :quote
+      # we need to unquote quoted expressions inside quotes
+      read(sexp[end])
+    elseif sexp[1] == :vect
       (:vect, map(readquoted, sexp[2:end])...)
     elseif sexp[1] == :call && sexp[2] == :Dict
       (:dict, map(readquoted, mapcat(x->x[2:end], sexp[3:end]))...)
@@ -243,8 +249,8 @@ function readquoted(sexp)
     end
   else
     # strip the \blockfull character from all RESERVED_WORDS
-    if isa(sexp, Expr) && sexp.head == :quote
-      read(sexp.args[end])
+    if isa(sexp, QuoteNode)
+      read(sexp.value)
     else
       read(sexp)
     end

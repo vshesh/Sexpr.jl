@@ -313,7 +313,9 @@ function readquoted(sexp, meta)
     end
   else
     let a = readatom(sexp, meta)
-      if isa(a, Symbol) || (isa(a, Expr) && a.head == :quote)
+      if isa(a, Symbol)
+        QuoteNode(a) 
+      elseif (isa(a, Expr) && a.head == :quote)
         Expr(:quote, a)
       else
         a
