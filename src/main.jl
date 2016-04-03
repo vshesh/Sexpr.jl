@@ -63,7 +63,14 @@ function processfile(io::IO,
                      program::AbstractString,
                      lines::Int = 1)
   for form in transpile(program)
-    println(io, form)
+    if isa(form, Expr) && form.head == :module
+      println(Expr(:module,
+                   form.args[1],
+                   form.args[2],
+                   Expr(:block, form.args[3].args[3:end]...)))
+    else
+      println(io, form)
+    end
     print(io, repeat("\n", lines))
   end
 end

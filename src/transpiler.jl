@@ -31,7 +31,7 @@ There needs to be a version of read that can operate without giving errors.
 Even in julia itself, macro errors are completely funky wrt line numbers.
 
 """
-rehydrate(ex) = Transpiler.transpile(Util.oneline(CLJReader.readquoted(ex)))
+rehydrate(ex) = Transpiler.transpile(Util.oneline(CLJReader.readquoted(ex)))[1]
 
 macro clj_str(str::AbstractString)
   transpile(str)

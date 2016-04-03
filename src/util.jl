@@ -230,22 +230,4 @@ function expand_module(ex::Expr)
   modex, mod
 end
 
-# printing macros still a pain in the butt.
-# import Base.string
-#
-# function string(ex::Expr)
-#   if ex.head == :macro
-#     ex.head = :function
-#     s = string(ex)
-#     ex.head = :macro
-#     Base.string("macro", s[9:end])
-#   elseif ex.head == :quote
-#     Base.string(":(", map(tostring, ex.args)..., ")")
-#   elseif ex.head == :$
-#     Base.string("\$(", map(tostring, ex.args)..., ")")
-#   else
-#     Base.string(ex)
-#   end
-# end
-
 end

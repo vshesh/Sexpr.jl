@@ -168,9 +168,25 @@ function readform(sexp, meta)
   
   # module related
   # module
+  if sexp[1] == "module"
+    return Util.stripmeta(:(module $(read(sexp[2], meta[2]))
+      $(map(read, sexp[3:end], meta[3:end])...)
+    end))
+  end
+
   # import
-  # export
+  if sexp[1] == "import"
+    return Expr(:import, map(read, sexp[2:end], meta[2:end])...)
+  end
   # using
+  if sexp[1] == "use"
+    return Expr(:using, map(read, sexp[2:end], meta[2:end])...)
+  end
+
+  # export
+  if sexp[1] == "export"
+    return Expr(:export, map(read, sexp[2:end], meta[2:end])...)
+  end
   # include is a function, so it's fine
   
   
