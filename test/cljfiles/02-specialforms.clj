@@ -81,6 +81,13 @@ Defn
 
 ; ---------------------------------- JULIA FORMS ---------------------------
 
+aget
+(aget x 1) ||| Any["aget", "x", "1"] ||| :(x[1])
+(aget x 1 2 3) ||| Any["aget", "x", "1", "2", "3"] ||| :(x[1,2,3])
+(aget x (: 1 3)) ||| Any["aget", "x", Any[":", "1", "3"]] ||| :(x[1:3])
+(aget x (: 1 :end)) ||| Any["aget", "x", Any[":", "1", ":end"]] ||| :(x[1:end])
+(aget x (: 1)) ||| Any["aget", "x", Any[":", "1"]] ||| :(x[1:end])
+
 Typing forms (::, curly)
 (:: x Int) ||| Any["::", "x", "Int"] ||| :(x::Int)
 (:: x (curly Union Int Int64)) ||| Any["::", "x", Any["curly", "Union", "Int", "Int64"]] ||| :(x::Union{Int, Int64})

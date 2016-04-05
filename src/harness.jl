@@ -73,7 +73,7 @@ function processfile(io::IO,
                      lines::Int = 1)
   for form in transpile(program)
     if isa(form, Expr) && form.head == :module
-      println(Expr(:module,
+      println(io, Expr(:module,
                    form.args[1],
                    form.args[2],
                    Expr(:block, form.args[3].args[3:end]...)))
@@ -84,7 +84,7 @@ function processfile(io::IO,
   end
 end
 
-const DEBUG = false
+const DEBUG = true
 
 function main(io::IO=STDOUT)
   if length(ARGS) == 0
@@ -133,12 +133,14 @@ function main(io::IO=STDOUT)
           process(outfile, readall(path))
           close(outfile)
         elseif isdir(path)
+          DEBUG && info("detected directory: $path")
           # filter extensions? (-e option to set extensions)
           #
           for file in Task(() -> Util.finddir(path))
-            outfile = open(joinpath(parsedargs[:output][1],
-                               file[length(path)+1:end]), "w")
-            info("writing $outfile")
+            outpath = joinpath(parsedargs[:output][1],
+                               string(splitext(file[length(path)+1:end])[1], ".jl"))
+            outfile = open(outpath, "w")
+            info("writing $outpath")
             process(outfile, readall(file))
             close(outfile)
           end

@@ -151,6 +151,19 @@ function read(sexp::Array, toplevel::Bool=false)
 
   # Julia Special Forms
   
+  # :ref and :(:) -> aget related
+  if sexp[1] == :ref
+    return ("aget", map(read, sexp[2:end])...)
+  end
+  
+  if sexp[1] == :(:)
+    # should not have more than four forms
+    if length(sexp) == 3 && sexp[3] == :end
+      return (":", read(sexp[2]))
+    end
+    return (":", map(read, sexp[2:end])...)
+  end
+  
   # module related
   # module
   if sexp[1] == :module
@@ -251,9 +264,6 @@ end
 
 function readquoted(sexp)
   if isform(sexp)
-    # TODO move the reading of VECID/DICTID type deals to a readliteral
-    # function which is called from read if the first element of the form
-    # is not a string.
     if sexp[1] == :quote
       # we need to unquote quoted expressions inside quotes
       read(sexp[end])
@@ -267,7 +277,6 @@ function readquoted(sexp)
       map(readquoted, sexp)
     end
   else
-    # strip the \blockfull character from all RESERVED_WORDS
     if isa(sexp, QuoteNode)
       read(sexp.value)
     else

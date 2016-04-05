@@ -7,7 +7,7 @@
 
 ## Overview
 
-Goal: Taking the syntax of clojure (or something close enough) and
+Taking the syntax of clojure (or something close enough) and
 translating it to a julia `Expr` object. This shouldn't be
 hard to do since Julia has a nice syntax already set up for this purpose
 (the `Expr` objects)!
@@ -32,7 +32,7 @@ clojurescript.
 Effectively, this is just the **reader** portion of implementing a lisp - Julia
 does everything else using its inbuilt mechanisms.
 
-## Syntax Documentation
+## Syntax Overview
 
 ### Atoms
 
@@ -65,33 +65,55 @@ does everything else using its inbuilt mechanisms.
     * TODO make the option to use escaped ascii-only names available. (ugly,
       but avoids having to use unicode, which is a pain depending on how your
       unicode extension is defined).
-    * `::` in a symbol identifier compiles to a type. It's an error to have more
-      than one of these in a symbol. eg, `x::Int` compiles to `(:: x Int)`
-  * `@` is not allowed as part of a symbol name (anywhere, as of now) because
-    it conflicts with julia's macro semantics. Please also note that `@`
-    does not mean deref! That's a huge difference from Clojure proper.
+    * `::` in a symbol identifier compiles to a type. eg, `x::Int` compiles to `(:: x Int)`
+    * `::T1::T2` compiles to a union like `x::T1::T2` -> `(:: x T1 T2)`
 
 ### Collections
 
-* `(a b c)` a list - if not quoted, it's evaluated and transpiled.
-  * quoted lists evaluate to vectors, as of now.
-* `[a b c]` a vector - transpiles to a julia array as well.
+* `'(a b c)` a list - if not quoted, it's evaluated and transpiled.
+  * quoted lists evaluate to tuples, as of now.
+* `[a b c]` a vector - transpiles to a julia array.
 * `{a b c d}` a map - transpiles to a julia `Dict(a => b, c=> d)` form.
-* TODO adding a tuple form. for now `(tuple a b c)` works.
 * TODO sets, which can map to `Set()` in julia.
 
 ### Julia Special Forms
 
-* `and`/`&&` (what you expect this to be) - needs to be a special form because
-  of short circuiting. Julia defines the `and` and `or` forms this way on purpose.
-* `or`/`||` (again, what you expect), see above.
-* `(:: x Int)` -> `x::Int` The `::` form defines types.
-  * only useful for function and type defintions.
-* `(curly Array Int64)` -> `Array{Int64}` will allow parameterized types.
-* `(.b a x y)` -> `a.b(x,y)` is the dot call form.
-* `(. a b c d)` -> `a.b.c.d` is the dot access form.
-  * note that `((. a b) x y)` is equivalent to `(.b a x y)`.
-
+* Short Circuit
+  * `and`/`&&` (what you expect this to be) - needs to be a special form because
+    of short circuiting. Julia defines the `and` and `or` forms this way on purpose.
+  * `or`/`||` (again, what you expect), see above.
+* `x[i]` family (getting/setting/slicing arrays)
+  * `(aget x 1)` -> `Expr(:ref, :x, 1)` -> `x[1]`.
+  * `(aget x 1 2 4 5)` -> `Expr(:ref, :x, 1, 2, 4, 5)` -> `x[1, 2, 4, 5]`
+  * `(aget x (: 1 3))` -> `x[1:3]`
+  * `(aget x (: 6 :end))` -> `x[6:end]`
+  * `(aget x (: 6))` -> `x[6:end]`
+* Typing
+  * `(:: x Int)` -> `x::Int` The `::` form defines types.
+    * `(:: x Int In64)` -> `x::Union{Int, Int64}` there's auto-union if many types are defined.
+    * only useful for function and type defintions.
+  * `(curly Array Int64)` -> `Array{Int64}` will allow parameterized types.
+  * `(.b a x y)` -> `a.b(x,y)` is the dot call form.
+  * `(. a b c d)` -> `a.b.c.d` is the dot access form.
+    * note that `((. a b) x y)` is equivalent to `(.b a x y)`.
+* Modules and Import
+  * `(module M ... end)` creates a module.
+    This is visually annoying since you indent your whole file by two spaces
+    just for this call to module, however I haven't figured out any better way
+    to do this - the other option is to make `#module M` a special hash dispatch
+    that wraps the whole file but... meh, I don't consider this a high enough
+    priority.
+  * `(import|using X y z a b)` contrary to my expectations, this will give you
+    `import X.y.a.b`. There will be a separate import statement for each
+    function/file you want to use.
+    * TODO make this cartesian productable, so `(import X [y z a])` will expand
+      to `import X.y; import X.z; import X.a` instead. This should shorten the
+      writing. Ideally should make this a system macro (in a system.clj file
+      that I define) and call it `import*` or something.
+  * `(export a b c)` and in a non-symmetrical module, this will give
+    `export a, b, c`. It makes sense from julia's point of view, since Modules
+    are flat things, and you only ever have one level of definitions to export.
+      
 ### Special Forms
 
 * `()` or empty list.
@@ -119,14 +141,15 @@ does everything else using its inbuilt mechanisms.
   * `defmulti` and related (does this even mean anything given julia's
     multiple-dispatch?)
   * `deftype` -> `type` in Julia.
-  * `module` -> should be able to define a module in julia
-  * `import` -> import statement.
-  * `(@macro)`-> `macrocall` which is different from normal function call;
-     Expr(:macrocall) instead of Expr(:call). It needs to be passed the dumped
-     s-expression itself, not the read-in s-expression.
 
 ### Macro Forms
 
+* `(@m x y z)` how to call a macro - prepend it's name with `@`. There is
+  unfortunately no way around this, since julia requires this distinction and
+  for me to resolve what things are macros would involve writing an entire
+  compiler. To keep it simple, I'm leaving this requirement in place.
+  * Since `@x` means deref in clojure, I might choose to use a different symbol
+    to denote macrocall in the future.
 * `defmacro` defines a macro, as expected.
   * The way that macros work right now is that the macro definition is passed
     a *clojure* s-expression to work with. This is not the same as being passed
@@ -135,7 +158,7 @@ does everything else using its inbuilt mechanisms.
     translated by the reader into a julia expression. This means that whatever
     program you write has to include the reader module of this project in order
     to produce the desired output.
-  * Every macro will end in a call to Reader.read() which will translate the
+  * Every macro will end in a call to `Sexpr.rehydrate()` which will translate the
     expression back to julia's native AST.
 * `quote` or `'` gives a literal list of the following expression.
   * The quote form doesn't properly escape symbols yet. Eg, `'x` is equal to `:x`

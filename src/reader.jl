@@ -189,21 +189,31 @@ function readform(sexp, meta)
   end
   # include is a function, so it's fine
   
-  
-  # # "get" operator (:ref in julia)
-  # if sexp[1] == "aget"
-  #   # surprisingly, a[] == a[1] in julia, which I consider strange.
-  #   return Expr(:ref, map(read, sexp[2:end], meta[2:end])...)
-  # end
-  # # : colon operator, for the purpose of slices and ranges
-  # if sexp[1] == ":"
-  #   if length(sexp) < 3
-  #     throw(InvalidFormCountError(meta[1]..., ":", sexp,
-  #                                 "at least 3 forms", "$(length(sexp))"))
-  #   end
-  #   return Expr(:(:), map(read, sexp[2:end], meta[2:end])...)
-  # end
-  
+  # "get" operator (:ref in julia)
+  if sexp[1] == "aget"
+    # surprisingly, a[] == a[1] in julia, which I consider strange.
+    # still it's a bad habit, so i'm not allowing it.
+    if length(sexp) < 3
+      throw(InvalidFormCountError(meta[1]..., "aget", sexp,
+                                  "at least 3 forms", "$(length(sexp))"))
+    end
+    return Expr(:ref, map(read, sexp[2:end], meta[2:end])...)
+  end
+  # : colon operator, for the purpose of slices and ranges
+  if sexp[1] == ":"
+    if length(sexp) < 2
+      throw(InvalidFormCountError(meta[1]..., ":", sexp,
+                                  "at least 2 forms", "$(length(sexp))"))
+    end
+    if length(sexp) > 4
+      throw(InvalidFormCountError(meta[1]..., ":", sexp,
+                                  "no more than 4 forms", "$(length(sexp))"))
+    end
+    if length(sexp) == 2 || (length(sexp) == 3 && sexp[3] == ":end")
+      return Expr(:(:), read(sexp[2], meta[2]), :end)
+    end
+    return Expr(:(:), map(read, sexp[2:end], meta[2:end])...)
+  end
   
   # for
   # try/catch

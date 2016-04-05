@@ -50,6 +50,12 @@ function(x) x+1;x+5; end ||| (fn [x] (+ x 1) (+ x 5))
 
 # ------------------- JULIA FORMS --------------------------
 
+:ref/ :(:) (aget)
+x[1] ||| (aget x 1)
+x[1,2,3] ||| (aget x 1 2 3)
+x[1:10] ||| (aget x (: 1 10))
+x[1:end] ||| (aget x (: 1))
+
 :call>:. (dot call syntax)
 x.y() ||| (x.y)
 x().y() ||| ((. (x) y))
