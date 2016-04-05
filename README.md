@@ -5,6 +5,47 @@
 <img src="https://coveralls.io/repos/github/vshesh/Sexpr.jl/badge.svg?branch=master"/>
 </span>
 
+## Quickstart
+
+```bash
+> Pkg.clone("....")
+$ julia -e 'include("src/harness.jl"); Harness.main()' --
+usage: Sexpr.jl [-i] [-c] [-l LINES] [-o OUTPUT] [-e EXTENSION] [-h]
+               [files...]
+A program to port clojure-like s-expression syntax to and from
+julia. By default, this program takes clojure syntax and outputs
+the julia version. Use -i to flip direction.
+
+positional arguments:
+  files                 If given one file and no output directory,
+                        will dump to stdout. If given a directory or
+                        multiple files, eg "sjulia file1 dir file2",
+                        an output directory must be specified with
+                        -o/--output where the files will go.
+optional arguments:
+  -i, --invert          take julia code and print out s-expression
+                        code
+  -c, --cat             cat all the input from STDIN rather than read
+                        from file. Ignores all positional args to the
+                        program.
+  -l, --lines LINES     how many blank lines should exist between top
+                        level forms, default 1 (type: Int64, default:
+                        1)
+  -o, --output OUTPUT   where to write out files if there are multiple
+                        positional arguments to the file. If this is
+                        empty, and there are >1 argument, the program
+                        will throw an error.
+  -e, --extension EXTENSION
+                        add an extension that qualifies as a lisp file
+                        (can use multiple times). Defaults: clj, cljs,
+                        cl, lisp, wisp, hy.
+  -h, --help            show this help message and exit
+
+$ julia -e 'include("src/harness.jl"); Harness.main()' -- -o test/output/
+  test/programs/
+# will transpile all .clj files in test/programs and dump them into test/output.
+```
+
 ## Overview
 
 Taking the syntax of clojure (or something close enough) and
@@ -113,7 +154,7 @@ does everything else using its inbuilt mechanisms.
   * `(export a b c)` -> `export a, b, c`.
     It makes sense from julia's point of view, since modules
     are flat things, and you only ever have one level of definitions to export.
-      
+    
 ### Special Forms
 
 * `()`/`'()` or empty list.
@@ -150,7 +191,10 @@ does everything else using its inbuilt mechanisms.
   would involve writing an entire compiler.
   To keep it simple, I'm leaving this requirement in place.
   * TODO Since `@x` means deref in clojure, I might choose to use a different
-    symbol to denote macrocall in the future. maybe \mu or something.
+    symbol to denote macrocall in the future. maybe `μ` or something.
+    Another idea is abusing # dispatch so `#macro (html [:div "helloworld"])``
+    calls the next form as a macro rather than a regular function.
+    The hash dispatch one seems worse, though.
 * `defmacro` defines a macro, as expected.
   * The way that macros work right now is that the macro definition is passed
     a *clojure* s-expression to work with. This is not the same as being passed
