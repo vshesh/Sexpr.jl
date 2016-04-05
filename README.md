@@ -74,7 +74,7 @@ does everything else using its inbuilt mechanisms.
   * quoted lists evaluate to tuples, as of now.
 * `[a b c]` a vector - transpiles to a julia array.
 * `{a b c d}` a map - transpiles to a julia `Dict(a => b, c=> d)` form.
-* TODO sets, which can map to `Set()` in julia.
+* TODO `#{a b c}` a set, which can map to `Set()` in julia.
 
 ### Julia Special Forms
 
@@ -146,10 +146,11 @@ does everything else using its inbuilt mechanisms.
 
 * `(@m x y z)` how to call a macro - prepend it's name with `@`. There is
   unfortunately no way around this, since julia requires this distinction and
-  for me to resolve what things are macros would involve writing an entire
-  compiler. To keep it simple, I'm leaving this requirement in place.
-  * Since `@x` means deref in clojure, I might choose to use a different symbol
-    to denote macrocall in the future.
+  for me to resolve what things are macros without it
+  would involve writing an entire compiler.
+  To keep it simple, I'm leaving this requirement in place.
+  * TODO Since `@x` means deref in clojure, I might choose to use a different
+    symbol to denote macrocall in the future. maybe \mu or something.
 * `defmacro` defines a macro, as expected.
   * The way that macros work right now is that the macro definition is passed
     a *clojure* s-expression to work with. This is not the same as being passed
@@ -176,4 +177,4 @@ does everything else using its inbuilt mechanisms.
   variable that's given to the macro and use the evaluated value.
 * `unquote-splice` or `~@` unquotes, and also expands the form by one layer
   into the form that's being returned. Ie, `(f ~@x)` is the same as
-  `f($(x...))` in julia.
+  `:(f($x...))` in julia.
