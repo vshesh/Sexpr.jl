@@ -110,13 +110,13 @@ does everything else using its inbuilt mechanisms.
       to `import X.y; import X.z; import X.a` instead. This should shorten the
       writing. Ideally should make this a system macro (in a system.clj file
       that I define) and call it `import*` or something.
-  * `(export a b c)` and in a non-symmetrical module, this will give
-    `export a, b, c`. It makes sense from julia's point of view, since Modules
+  * `(export a b c)` -> `export a, b, c`.
+    It makes sense from julia's point of view, since modules
     are flat things, and you only ever have one level of definitions to export.
       
 ### Special Forms
 
-* `()` or empty list.
+* `()`/`'()` or empty list.
   * For now, this compiles to an empty tuple. In some lisps this is equivalent
     to nil (eg Common Lisp) but in Clojure it's not, so I'm following that
     convention.
