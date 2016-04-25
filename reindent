@@ -1,4 +1,0 @@
-#!/bin/bash
-
-# change this spot to alter indent size ->    *
-sed -e 's/^/~/' -e ': r' -e 's/^\( *\)~    /\1  ~/' -e 't r' -e 's/~//' $@

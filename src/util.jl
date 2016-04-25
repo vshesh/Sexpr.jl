@@ -4,18 +4,11 @@ module Util
 export mapcat
 
 export VECID, DICTID, RESERVED_WORDS
-export stripmeta, tosexp, isform, escapesym, unescapesym
+export stripmeta, tosexp, isform, escapesym, unescapesym, tostring
 
 # ------------------------- constants -------------------------------
 const VECID = :vect
 const DICTID = :dict
-
-const RESERVED_WORDS = ASCIIString[
-"function", "global", "for", "end", "while", "if", "else", "elseif", "break",
-    "switch", "case", "otherwise", "try", "catch", "end", "const", "immutable",
-    "import", "importall", "export", "type", "typealias", "return",
-    "macro", "quote", "in", "abstract", "module", "using", "continue",
-    "ifelse", "do", "eval", "let", "finally", "throw"]
 
 # ------------------------- General Utilities -----------------------
 
@@ -112,7 +105,10 @@ function escapesym(form, unicode=true)
   return str
 end
 
-
+"""
+See docs for Util.escapesym!
+This function does the exact inverse of that function.
+"""
 function unescapesym(form::AbstractString, unicode=true)
   str = form
   if unicode
@@ -137,7 +133,6 @@ function unescapesym(form::AbstractString, unicode=true)
   end
   return str
 end
-
 
 
 oneline(x::AbstractString) = x

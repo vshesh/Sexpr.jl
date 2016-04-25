@@ -78,7 +78,7 @@ function read(sexp::Array, toplevel::Bool=false)
     return string(":",read(sexp[2]))
   end
   
-
+  
   # empty list
   if sexp[1] == :tuple && length(sexp) == 1
     return ()
