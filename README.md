@@ -7,9 +7,10 @@
 
 ## Quickstart
 
-```bash
-> Pkg.clone("....")
-$ julia -e 'include("src/harness.jl"); Harness.main()' --
+``` {.bash}
+> Pkg.clone("https://github.com/vshesh/Sexpr.jl.git")
+
+$ julia -e 'import Sexpr; Sexpr.main()' --
 usage: Sexpr.jl [-i] [-c] [-l LINES] [-o OUTPUT] [-e EXTENSION] [-h]
                [files...]
 A program to port clojure-like s-expression syntax to and from
@@ -24,7 +25,7 @@ positional arguments:
                         -o/--output where the files will go.
 optional arguments:
   -i, --invert          take julia code and print out s-expression
-                        code
+                        code instead
   -c, --cat             cat all the input from STDIN rather than read
                         from file. Ignores all positional args to the
                         program.
@@ -40,38 +41,78 @@ optional arguments:
                         (can use multiple times). Defaults: clj, cljs,
                         cl, lisp, wisp, hy.
   -h, --help            show this help message and exit
+```
 
-$ julia -e 'include("src/harness.jl"); Harness.main()' -- -o test/output/
-  test/programs/
+``` {.bash}
+$ julia -e 'import Sexpr; Sexpr.main()' -- -o test/output/ test/programs/
 # will transpile all .clj files in test/programs and dump them into test/output.
 ```
 
 ## Overview
 
-Taking the syntax of clojure (or something close enough) and
-translating it to a julia `Expr` object. This shouldn't be
-hard to do since Julia has a nice syntax already set up for this purpose
-(the `Expr` objects)!
+This project aims to make s-expression syntax interoperable with julia's
+own Expr objects.
 
-Then, look into doing julia -> clojure syntax. This may not be the cleanest,
-since Julia's reader tends to aggressively wrap things in blocks (ie., `do`
-from clojure), but it should still work. Of course, not everything in julia
-can be transformed to a clojure expression, but given that the primary purpose
-of this translation is to translate back from translated s-expressions (i.e,
-when macroexpanding) it shouldn't be a problem to only support the limited
-amount of things that are available in clojure as special forms.
+If you've seen LispSyntax.jl, it's a similar idea, but IMHO
+this project does a bit more, such as allow you to transpile file->file rather than just read in a program, and also transpile back, so you can convert your julia files (minus a few special forms that aren't supported yet) into clojure syntax. This makes it possible to go from julia to python (again, not that anyone needed another route b/c pycall) via Hylang, or to JS via WispJS. The benefit here is that the awkward macro syntax in both of those languages is avoided (Hy necessitates wrapping everything in HyModel objects yourself, which is ridiculous, and WispJS's module system is broken, because it is Javascript, so resolving variable names is not working properly).
 
-Final goal - use this to do a `macroexpand` operation on the input clj syntax.
-Basically, process all user-defined macros and output the resultant program,
-but back to clojure syntax.
-This would be useful for things like wispjs, where the transpiler is fully
-operational, but the macro system sucks. You can write some macros, macroexpand
-using this Julia module, then pass the resulting s-exprs through wispjs and
-get a js output, all without invoking the horrible infrastructure around
-clojurescript.
+The final goal is to use interoperability to do a `macroexpand` operation on the input clj syntax. So you would be able to give a folder of clj files, and a temp folder with jl files would be created, then each file would be read in and macroexpanded, converted back to clj syntax, and written out to a third folder. Unfortunately, it's necessary to write the jl files out as an intermediary step, because they need to be able to find each other to resolve imports.
+Alternatively, you could write the clj files as jl files with the macro `@clj_str`, but that makes your whole file a string, which breaks most syntax highlighters, which can be annoying.
 
-Effectively, this is just the **reader** portion of implementing a lisp - Julia
-does everything else using its inbuilt mechanisms.
+I know that you're probably thinking "why?" and it was mostly a project for me to learn Julia and muck around with its internals. I learned quite a bit, so mission success! CLJS has self-hosting now, which means that they will hopefully have a js-only package soon. However, dealing with google closure compiler and leiningen's java/jvm dependencies are a larger problem to be solved, and until then, I still consider it unwieldy.
+
+Effectively, this is just the **reader** portion of implementing a lisp - Julia does everything else using its inbuilt mechanisms.
+
+## Side by Side Showoff
+
+<div style="display:flex; margin:0 auto; width: 80%; justify-content:space-between;">
+<div style="flex:1; padding-left:10%;">
+**Clojure-like**
+```clojure
+; nil, true, and false work as expected.
+nil
+true
+false
+
+; numbers - can be int or float
+; ints
+1
+; 16r means base 16
+16r1ef1346bafdc
+; can be any size, will use smallest fitting type for the int.
+12398130498712098741023497102349781203
+
+; float (as expected)
+3.4
+5.6e10
+
+```
+
+</div>
+<div style="flex:1; padding-left:10%;">
+**Julia**
+```julia
+# nothing, true and false in julia.
+nothing
+true
+false
+
+# numbers
+# int
+1
+# base 16 number is translated to base10 constant
+34021315424220
+# can be any size
+12398130498712098741023497102349781203
+
+# float
+3.4
+5.6e10
+
+```
+
+</div>
+</div>
 
 ## Syntax Overview
 
@@ -127,8 +168,8 @@ does everything else using its inbuilt mechanisms.
   * `(aget x 1)` -> `Expr(:ref, :x, 1)` -> `x[1]`.
   * `(aget x 1 2 4 5)` -> `Expr(:ref, :x, 1, 2, 4, 5)` -> `x[1, 2, 4, 5]`
   * `(aget x (: 1 3))` -> `x[1:3]`
-  * `(aget x (: 6 :end))` -> `x[6:end]`
-  * `(aget x (: 6))` -> `x[6:end]`
+  * `(aget x (: 6))` -> `x[6:end]` (preferred)
+  * `(aget x (: 6 :end))` -> `x[6:end]` (not preferred)
 * Typing
   * `(:: x Int)` -> `x::Int` The `::` form defines types.
     * `(:: x Int In64)` -> `x::Union{Int, Int64}` there's auto-union if many types are defined.
