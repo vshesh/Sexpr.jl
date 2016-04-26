@@ -41,6 +41,8 @@ tostring(x::Union{Int, Int8, Int16, Int32, Int64, Int128}, level::Int=0) =
 tostring(x::Union{UInt, UInt8, UInt16, UInt32, UInt64, UInt128}, level::Int=0) =
   @indent string("0x",base(16,x))
 tostring(r::Rational, level::Int=0) = @indent string(r)
+tostring(p::Pair, level::Int=0) =
+  @indent string(tostring(p[1])," => ",tostring(p[2]))
 
 tostring(c::Char, level::Int=0) = @indent string("'", c ,"'")
 tostring(s::AbstractString, level::Int=0) = @indent string("\"", s, "\"")
@@ -67,7 +69,7 @@ function tostring(ex::Expr, level::Int=0)
   if ex.head == ://
     @indent string(ex.args[1], "//", ex.args[2])
   elseif ex.head == :(=>)
-    @indent @sprintf("%s", ex)
+    @indent string(tostring(ex.args[1]), " => ", ex.args[2])
   
   # Collections
   elseif ex.head == :tuple
@@ -122,7 +124,7 @@ function tostring(ex::Expr, level::Int=0)
            end)
            
   elseif ex.head == :comparison
-    @indent join(map(x->tostring(x, level), ex.args), " ")
+    @indent string("(",join(map(x->tostring(x, level), ex.args), " "),")")
   
   elseif ex.head == :let
     string(@indent("let "),
@@ -144,10 +146,10 @@ function tostring(ex::Expr, level::Int=0)
   # JULIA Special forms
   # ref/aget related
   elseif ex.head == :ref
-    @indent string(tostring(ex.args[1],
+    @indent string(tostring(ex.args[1]),
                    "[",
                    join(map(tostring, ex.args[2:end]), ","),
-                   "]"))
+                   "]")
   elseif ex.head == :(:)
     @indent join(map(tostring, ex.args), ":")
   
@@ -158,17 +160,17 @@ function tostring(ex::Expr, level::Int=0)
            join(map(x->tostring(x,level+1), ex.args[3].args[3:end-1]), "\n\n"),
            "\n",
            @indent("end"))
-  elseif ex.head in (:import, :using, :export)
-    @indent string(tostring(ex.head), " ", join(map(tostring, ex.args), ","))
+  elseif ex.head in (:import, :using)
+    @indent string(tostring(ex.head), " ", join(map(tostring, ex.args), "."))
+
+  elseif ex.head == :export
+    @indent string("export ", join(map(tostring, ex.args), ","))
   
   # . syntax
   elseif ex.head in (:., :(::), :curly, :&&, :||)
     @indent @sprintf("%s", ex)
     
-  elseif ex.head == :macrocall
-    string(@indent("@"), tostring(ex.args[1]), "(",
-           join(map(tostring, ex.args[2:end]), ", "), ")")
-  elseif ex.head == :call
+  elseif ex.head == :call || ex.head == :macrocall
     string(tostring(ex.args[1], level), "(",
            join(map(tostring, ex.args[2:end]), ", "), ")")
            
