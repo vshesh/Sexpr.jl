@@ -32,7 +32,7 @@ show for their custom objects. There are no custom objects in the project
 as of now, but if there ever have to be (thanks to hash dispatch) it might
 be a good idea to support that).
 """
-tostring(x, level::Int=0) = @indent @sprintf("%s", x)
+function tostring(x, level::Int=0) end
 
 tostring(x::Void, level::Int=0) = @indent "nil"
 tostring(x::Bool, level::Int=0) = @indent string(x)
@@ -115,9 +115,9 @@ function tostring(ex::Expr, level::Int=0)
     string(@indent("if "),
            tostring(ex.args[1]), "\n",
            tostring(ex.args[2], level+1),
+           "\n",
            if length(ex.args) > 2
-             string("\n",
-                    @indent("else\n"),
+             string(@indent("else\n"),
                     tostring(ex.args[3], level+1), "\n",
                     @indent("end"))
            else @indent("end")
@@ -157,7 +157,7 @@ function tostring(ex::Expr, level::Int=0)
   elseif ex.head == :module
     string(@indent("module "),
            ex.args[2], "\n",
-           join(map(x->tostring(x,level+1), ex.args[3].args[3:end-1]), "\n\n"),
+           join(map(x->tostring(x,level+1), ex.args[3].args[3:end]), "\n\n"),
            "\n",
            @indent("end"))
   elseif ex.head in (:import, :using)

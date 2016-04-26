@@ -65,6 +65,7 @@ facts("Expression Formatting Tests") do
   @fact tostring(stripmeta(:(begin x; y end))) --> "begin\n  x\n  y\nend"
   
   @fact tostring(stripmeta(:(if true 1 else 0 end))) --> "if true\n  1\nelse\n  0\nend"
+  @fact tostring(stripmeta(:(if true 1 end))) --> "if true\n  1\nend"
 
   @fact tostring(stripmeta(Expr(:comparison, 1, :>, 2))) --> "(1 > 2)"
   
@@ -80,6 +81,8 @@ facts("Expression Formatting Tests") do
   @fact tostring(:(x[1:2])) --> "x[1:2]"
   
   @fact tostring(stripmeta(:(module M end))) --> "module M\n\nend"
+  @fact tostring(stripmeta(:(module M; function f(x) x end end))) --> "module M\n  function f(x)\n    x\n  end\nend"
+  
   @fact tostring(stripmeta(:(using X.y))) --> "using X.y"
   @fact tostring(stripmeta(:(export x,y,z))) --> "export x,y,z"
   
@@ -89,6 +92,9 @@ facts("Expression Formatting Tests") do
   @fact tostring(:(@f(x,y))) --> "@f(x, y)"
   @fact tostring(:(f(x,y))) --> "f(x, y)"
   
+  @fact tostring(:(import x, y)) --> "import x\nimport y"
+  
+  @fact tostring(Expr(:random)) --> "ERROR: could not print $(Expr(:random)) :ERROR"
 end
 
 end
