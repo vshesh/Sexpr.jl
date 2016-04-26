@@ -63,57 +63,6 @@ I know that you're probably thinking "why?" and it was mostly a project for me t
 
 Effectively, this is just the **reader** portion of implementing a lisp - Julia does everything else using its inbuilt mechanisms.
 
-## Side by Side Showoff
-
-<div style="display:flex; margin:0 auto; width: 80%; justify-content:space-between;">
-<div style="flex:1; padding-left:10%;">
-**Clojure-like**
-```clojure
-; nil, true, and false work as expected.
-nil
-true
-false
-
-; numbers - can be int or float
-; ints
-1
-; 16r means base 16
-16r1ef1346bafdc
-; can be any size, will use smallest fitting type for the int.
-12398130498712098741023497102349781203
-
-; float (as expected)
-3.4
-5.6e10
-
-```
-
-</div>
-<div style="flex:1; padding-left:10%;">
-**Julia**
-```julia
-# nothing, true and false in julia.
-nothing
-true
-false
-
-# numbers
-# int
-1
-# base 16 number is translated to base10 constant
-34021315424220
-# can be any size
-12398130498712098741023497102349781203
-
-# float
-3.4
-5.6e10
-
-```
-
-</div>
-</div>
-
 ## Syntax Overview
 
 ### Atoms
