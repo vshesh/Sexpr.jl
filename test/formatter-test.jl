@@ -72,6 +72,7 @@ facts("Expression Formatting Tests") do
   @fact tostring(stripmeta(:(let x=1; x end))) --> "let x = 1\n  x\nend"
   
   @fact tostring(stripmeta(:(function f(x) x end))) --> "function f(x)\n  x\nend"
+  @fact tostring(stripmeta(:(function f(x) x; x+1 end))) --> "function f(x)\n  x\n  +(x, 1)\nend"
   
   @fact tostring(stripmeta(:(x->x))) --> "x -> x"
   @fact tostring(stripmeta(:((x,y)->x+y))) --> "(x,y) -> +(x, y)"

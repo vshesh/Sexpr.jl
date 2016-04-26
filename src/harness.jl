@@ -10,6 +10,7 @@ module Harness
 
 using ArgParse
 include("transpiler.jl")
+include("formatter.jl")
 include("util.jl")
 
 function error_handler(settings::ArgParseSettings, err, err_code::Int=1, io::IO=STDERR)
@@ -72,19 +73,12 @@ function processfile(io::IO,
                      program::AbstractString,
                      lines::Int = 1)
   for form in transpile(program)
-    if isa(form, Expr) && form.head == :module
-      println(io, Expr(:module,
-                   form.args[1],
-                   form.args[2],
-                   Expr(:block, form.args[3].args[3:end]...)))
-    else
-      println(io, form)
-    end
+    println(io, Formatter.tostring(form))
     print(io, repeat("\n", lines))
   end
 end
 
-const DEBUG = true
+const DEBUG = false
 
 function main(io::IO=STDOUT)
   if length(ARGS) == 0

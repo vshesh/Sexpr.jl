@@ -134,7 +134,7 @@ function tostring(ex::Expr, level::Int=0)
            
   elseif ex.head == :function || ex.head == :macro
     string(@indent(string(ex.head)), " ", tostring(ex.args[1]), "\n",
-           tostring(ex.args[2], level+1), "\n",
+           join(map(x->tostring(x,level+1), ex.args[2].args),"\n"), "\n",
            @indent("end"))
   
   elseif ex.head == :->
