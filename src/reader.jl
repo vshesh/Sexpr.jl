@@ -486,7 +486,7 @@ function readsym(form, meta, unicode=true)
                     # (comparison) ==, !=, <, >, <=, >=,
                     "|(?:==)|(?:!=)|<|>|(?:<=)|(?:>=)",
                     # others (eg array slice, dot, type, pair)
-                    "|:|\.|(?:::)|(?:=>)",
+                    "|:|\\.|(?:::)|(?:=>)",
                     ")\$"
                     )
   if length(form) < 4 && match(Regex(validops), form) != nothing

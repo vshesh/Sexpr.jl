@@ -239,6 +239,7 @@ const tags = Dict(
   :keyword => "span.constant.keyword",
   
   :variable => "span.variable",
+  :type => "span.variable.type",
   # reserved words in a language, like "if"
   :reserved => "span.reserved",
 
@@ -262,7 +263,12 @@ const tags = Dict(
   :dict => "span.ds.dict",
   
   # SPECIAL forms
-  :block => "span.block"
+  :block => "span.block",
+  :if => "span.if",
+  :(=) => "span.def",
+  :comparison => "span.comparison",
+  :function => "span.function",
+  :macro => "span.macro"
 )
 
 function tohtml(x, level::Int=0) end
@@ -292,7 +298,20 @@ tohtml(x::QuoteNode, level::Int=0) =
   else
     string(":(",tohtml(x.value),")")
   end
-tohtml(s::Symbol, level::Int=0) = (tags[:variable], string(s))
+
+tohtml(sym::Symbol, level::Int=0) = let s = string(sym);
+  (if match(r"^(?:\+|-|\*|/|\\|\^|%|(?://))$", s) != nothing
+    tags[:oparith]
+  elseif match(r"^(?:~|&|\||\$|(?:>>)|(?:<<)|(?:>>>))$", s) != nothing
+    tags[:opbit]
+  elseif match(r"^(?:(?:==)|(?:!=)|<|>|(?:<=)|(?:>=))$", s) != nothing
+    tags[:opcomp]
+  elseif match(r"^(?::|\.|(?:::)|(?:=>)|(?:\.\.\.))$", s) != nothing
+    tags[:opmisc]
+  else
+    tags[:variable]
+  end,s)
+end
 
 tohtml(t::Tuple, level::Int=0) =
   (tags[:tuple],
@@ -317,6 +336,11 @@ tohtml(t::Dict, level::Int=0) =
               map(x -> tohtml(x, level+1), t))..., ")")
    
 function tohtml(ex::Expr, level::Int=0)
+  # TODO remove extraneous heads of html forms.
+  # this is possible by removing the head and returning a tuple of html forms,
+  # which should still work in the html function.
+  # TODO better yet, make this an option.
+  
   # special atoms
   if ex.head == ://
     (tags[:rational], string(ex.args[1], "//", ex.args[2]))
@@ -379,6 +403,84 @@ function tohtml(ex::Expr, level::Int=0)
         (tags[:reserved], "end"))
     end
   
+  elseif ex.head == :if
+    (tags[:if],
+      (tags[:reserved], "if"), " ",
+      tohtml(ex.args[1]), "\n",
+      @rawindent(1),
+      tohtml(ex.args[2], level+1),
+      "\n",
+      (if length(ex.args) > 2
+        (@rawindent(0), (tags[:reserved], "else"),
+         "\n",
+         @rawindent(1),
+         tohtml(ex.args[3], level+1),
+         "\n")
+      else ()
+      end)...,
+      @rawindent(0),
+      (tags[:reserved], "end"))
+
+  elseif ex.head == :comparison
+    (tags[:comparison],
+     interpose(" ", map(x->tohtml(x), ex.args))...,)
+  
+  elseif ex.head == :let
+    ("span.let",
+     (tags[:reserved], "let "),
+      interpose((tags[:comma], ","), " ", map(tohtml, ex.args[2:end]))...,
+      "\n",
+      @rawindent(1),
+      tohtml(ex.args[1], level+1), "\n",
+      @rawindent(0),
+      (tags[:reserved], "end"))
+  
+  elseif ex.head == :function || ex.head == :macro
+    (tags[ex.head],
+     (tags[:reserved], string(ex.head)), " ",
+     tohtml(ex.args[1]), "\n",
+     @rawindent(1),
+     interpose("\n", @rawindent(1),
+               map(x->tohtml(x,level+1), ex.args[2].args))...,
+     "\n",
+     @rawindent(0),
+     (tags[:reserved], "end"))
+  
+  elseif ex.head == :->
+    (tags[:->], tohtml(ex.args[1], level),
+      " ", (tags[:opmisc], "->")," ",
+      tohtml(ex.args[2]))
+  
+  elseif ex.head == :(=)
+    (tags[:(=)], tohtml(ex.args[1], level),
+     " ", (tags[:opmisc], "="), " ",
+     tohtml(ex.args[2]))
+
+  # simple operators syntax
+  elseif ex.head in (:&&, :||)
+    let op = ex.head == :&& ? :|| : :&&
+      (tags[:comparison],
+       if isa(ex.args[1], Expr) && ex.args[1].head == op
+         (tags[:paren], "(")
+       else ""
+       end,
+       tohtml(ex.args[1]),
+       if isa(ex.args[1], Expr) && ex.args[1].head == op
+         (tags[:paren], ")")
+       else ""
+       end,
+       " ", (tags[:opmisc], string(ex.head)), " ",
+       if isa(ex.args[2], Expr) && ex.args[2].head == op
+         (tags[:paren], "(")
+       else ""
+       end,
+       tohtml(ex.args[2]),
+       if isa(ex.args[2], Expr) && ex.args[2].head == op
+         (tags[:paren], ")")
+       else ""
+       end)
+    end
+
   elseif ex.head == :call || ex.head == :macrocall
     ("span.call",
       tohtml(ex.args[1], level),
