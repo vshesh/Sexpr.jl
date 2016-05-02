@@ -199,25 +199,37 @@ end
 
 html(x::Any) = string(x)
 function html(v::Union{Array, Tuple})
+  if isa(v[1], Union{Array, Tuple}) || isa(v[1], AbstractString) && v[1] == ""
+    return join(map(html,v), "")
+  else
+    t = if isa(v[1], Symbol) string(v[1]) else v[1] end
+    # get id
+    id = match(r"#(\w+)\b", t)
+    id = if id != nothing id[1] else nothing end
+    # strip classes
+    s = split(t, '.')
+    tagname = split(s[1], '#')[1]
+    classes = join(map(x->split(x, '#')[1], s[2:end]), " ")
 
-  t = if isa(v[1], Symbol) string(v[1]) else v[1] end
-
-  # get id
-  id = match(r"#(\w+)\b", t)
-  id = if id != nothing id[1] else nothing end
-
-  # strip classes
-  s = split(t, '.')
-  tagname = split(s[1], '#')[1]
-  classes = join(map(x->split(x, '#')[1], s[2:end]), " ")
-
-  return "<$(tagname)$(
-    if id != nothing " id=\"$(id)\"" else "" end) class=\"$(classes)\">$(
-    join(map(html, v[2:end]),""))</$(tagname)>"
+    s = "<$(tagname)$(id != nothing ? " id=\"$(id)\"" : "") class=\"$(classes)\">"
+    for e in v[2:end]
+      if isa(e, Union{Array, Tuple}) && isa(e[1], Union{Array, Tuple}) ||
+         isa(e, AbstractString) && e == ""
+        for k in e
+          s = string(s, html(k))
+        end
+      else
+        s = string(s, html(e))
+      end
+    end
+    
+    s = string(s, "</$(tagname)>")
+    return s
+  end
 end
 
 
-mapcat(f, args...) = vcat(map(f, args...)...)
+mapcat(f::Function, args...) = vcat(map(f, args...)...)
 interpose(inter, seq) = mapcat((e) -> [e, inter], seq)[1:end-1]
 interpose(i1, i2, seq) = mapcat((e) -> [e, i1, i2], seq)[1:end-2]
 prependcat(i, seq) = mapcat((e) -> [i, e], seq)
@@ -309,7 +321,7 @@ tohtml(sym::Symbol, level::Int=0) = let s = string(sym);
   elseif match(r"^(?::|\.|(?:::)|(?:=>)|(?:\.\.\.))$", s) != nothing
     tags[:opmisc]
   else
-    tags[:variable]
+    match(r"^[A-Z]", s) == nothing ? tags[:variable] : tags[:type]
   end,s)
 end
 
@@ -345,18 +357,15 @@ function tohtml(ex::Expr, level::Int=0)
   if ex.head == ://
     (tags[:rational], string(ex.args[1], "//", ex.args[2]))
   elseif ex.head == :(=>)
-    (tags[:pair],
-      tohtml(ex.args[1]), " ",
-      (tags[:opmisc], "=>"), " ",
-      tohtml(ex.args[2]))
+    (tohtml(ex.args[1]), " ", (tags[:opmisc], "=>"), " ", tohtml(ex.args[2]))
 
   # Collections
   elseif ex.head == :tuple || ex.head == :vect
     (tags[ex.head],
-      (tags[:paren], "("),
+      (tags[:paren], ex.head == :tuple ? "(" : "["),
       interpose((tags[:comma], ","), " ",
                 map(x -> tohtml(x), ex.args))...,
-      (tags[:paren], ")"))
+      (tags[:paren], ex.head == :tuple ? ")" : "]"))
 
   elseif ex.head == :call && ex.args[1] == :Dict
     (tags[:dict],
@@ -394,8 +403,7 @@ function tohtml(ex::Expr, level::Int=0)
     if length(ex.args) == 1
       tohtml(ex.args[1], level)
     else
-      (tags[:block],
-        (tags[:reserved], "begin\n"),
+      ( (tags[:reserved], "begin\n"),
         @rawindent(1),
         interpose("\n", @rawindent(1), map(x -> tohtml(x, level+1), ex.args))...,
         "\n",
@@ -404,8 +412,7 @@ function tohtml(ex::Expr, level::Int=0)
     end
   
   elseif ex.head == :if
-    (tags[:if],
-      (tags[:reserved], "if"), " ",
+    ( (tags[:reserved], "if"), " ",
       tohtml(ex.args[1]), "\n",
       @rawindent(1),
       tohtml(ex.args[2], level+1),
@@ -422,12 +429,33 @@ function tohtml(ex::Expr, level::Int=0)
       (tags[:reserved], "end"))
 
   elseif ex.head == :comparison
-    (tags[:comparison],
-     interpose(" ", map(x->tohtml(x), ex.args))...,)
-  
+    (interpose(" ", map(x->tohtml(x), ex.args))...,)
+  # and/or
+  elseif ex.head in (:&&, :||)
+    let op = ex.head == :&& ? :|| : :&&
+      (if isa(ex.args[1], Expr) && ex.args[1].head == op
+         (tags[:paren], "(")
+       else ""
+       end,
+       tohtml(ex.args[1]),
+       if isa(ex.args[1], Expr) && ex.args[1].head == op
+         (tags[:paren], ")")
+       else ""
+       end,
+       " ", (tags[:opmisc], string(ex.head)), " ",
+       if isa(ex.args[2], Expr) && ex.args[2].head == op
+         (tags[:paren], "(")
+       else ""
+       end,
+       tohtml(ex.args[2]),
+       if isa(ex.args[2], Expr) && ex.args[2].head == op
+         (tags[:paren], ")")
+       else ""
+       end)
+    end
+
   elseif ex.head == :let
-    ("span.let",
-     (tags[:reserved], "let "),
+    ((tags[:reserved], "let "),
       interpose((tags[:comma], ","), " ", map(tohtml, ex.args[2:end]))...,
       "\n",
       @rawindent(1),
@@ -452,42 +480,59 @@ function tohtml(ex::Expr, level::Int=0)
       tohtml(ex.args[2]))
   
   elseif ex.head == :(=)
-    (tags[:(=)], tohtml(ex.args[1], level),
+    (tohtml(ex.args[1], level),
      " ", (tags[:opmisc], "="), " ",
      tohtml(ex.args[2]))
+  
+  # JULIA Special forms
+  # ref/aget related
+  elseif ex.head == :ref
+    (tohtml(ex.args[1]),
+     (tags[:paren], "["),
+     interpose((tags[:comma], ","), map(tohtml, ex.args[2:end]))...,
+     (tags[:paren], "]"))
+  elseif ex.head == :(:)
+    interpose((tags[:opmisc], ":"), map(tohtml, ex.args))
 
-  # simple operators syntax
-  elseif ex.head in (:&&, :||)
-    let op = ex.head == :&& ? :|| : :&&
-      (tags[:comparison],
-       if isa(ex.args[1], Expr) && ex.args[1].head == op
-         (tags[:paren], "(")
-       else ""
-       end,
-       tohtml(ex.args[1]),
-       if isa(ex.args[1], Expr) && ex.args[1].head == op
-         (tags[:paren], ")")
-       else ""
-       end,
-       " ", (tags[:opmisc], string(ex.head)), " ",
-       if isa(ex.args[2], Expr) && ex.args[2].head == op
-         (tags[:paren], "(")
-       else ""
-       end,
-       tohtml(ex.args[2]),
-       if isa(ex.args[2], Expr) && ex.args[2].head == op
-         (tags[:paren], ")")
-       else ""
-       end)
-    end
+  #module related
+  elseif ex.head == :module
+    ((tags[:reserved], "module"), " ",
+     tohtml(ex.args[2]), "\n",
+     @rawindent(0),
+     interpose("\n\n", @rawindent(0),
+               map(x->tohtml(x,level), ex.args[3].args[3:end]))...,
+     "\n",
+     @rawindent(0),
+     (tags[:reserved], "end"))
+  elseif ex.head in (:import, :using)
+    ((tags[:reserved], tohtml(ex.head)), " ", interpose(".", map(tohtml, ex.args))...)
+
+  elseif ex.head == :export
+    ((tags[:reserved], "export"), " ", interpose(",", map(tohtml, ex.args))...)
+
+  elseif ex.head == :.
+    # TODO not efficient at all, just me being lazy.
+    interpose(".", map(x->tohtml(parse(x)), split(@sprintf("%s", ex), ".")))
+    
+  elseif ex.head == :(::)
+    ("span.typestring",
+     tohtml(ex.args[1]),
+     (tags[:opmisc], "::"),
+     map(tohtml, ex.args[2:end])...)
+  elseif ex.head == :curly
+    (tohtml(ex.args[1]),
+     (tags[:paren], "{"),
+     interpose((tags[:comma], ","), " ", map(tohtml, ex.args[2:end]))...,
+     (tags[:paren], "}"))
 
   elseif ex.head == :call || ex.head == :macrocall
-    ("span.call",
-      tohtml(ex.args[1], level),
+    ( tohtml(ex.args[1], level),
       (tags[:paren], "("),
       interpose((tags[:comma], ","), " ", map(tohtml, ex.args[2:end]))...,
       (tags[:paren], ")"))
-         
+  
+  elseif ex.head == :toplevel
+    interpose("\n", @rawindent(0), map(x -> tohtml(x,level), ex.args))
   else
    "ERROR: could not htmlize $ex :ERROR"
   end
