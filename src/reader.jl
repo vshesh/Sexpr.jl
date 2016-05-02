@@ -250,7 +250,7 @@ function readform(sexp, meta)
     for i in 2:length(sexp)
       if isform(sexp[i]) && sexp[i][1] != "curly"
         throw(InvalidFormStructureError(meta[i][1]..., "curly", sexp,
-          string("curly forms can only have other curly forms as subexpressions.",
+          string("curly forms can only have curly forms as subexpressions.",
                  "Found a $(sexp[i][1]) form at position $i instead.")))
       end
     end
@@ -383,6 +383,17 @@ function readatom(sexp::AbstractString, meta)
   end
 end
 
+"""
+For destructuring and rest params.
+For now, this only handles regular symbols and rest params.
+"""
+function readbinding(sexp::Union{Array, Tuple}, meta)
+  if sexp[end-1] == "&"
+    
+  end
+end
+
+
 function readfunc(sexp, meta)
   # automatically assumes first form is called 'fn',
   # this makes it work for fn/defn at the same time.
@@ -510,7 +521,8 @@ function readsym(form, meta, unicode=true)
   if length(symtype) == 2
     return Expr(:(::), e, readsym(t, meta))
   elseif length(symtype) >= 3
-    return Expr(:(::), e, Expr(:curly, :Union, map(x->readsym(x,meta), symtype[2:end])...))
+    return Expr(:(::), e,
+                Expr(:curly, :Union, map(x->readsym(x,meta), symtype[2:end])...))
   else
     return e
   end

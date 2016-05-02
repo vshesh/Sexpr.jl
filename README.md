@@ -59,60 +59,10 @@ this project does a bit more, such as allow you to transpile file->file rather t
 The final goal is to use interoperability to do a `macroexpand` operation on the input clj syntax. So you would be able to give a folder of clj files, and a temp folder with jl files would be created, then each file would be read in and macroexpanded, converted back to clj syntax, and written out to a third folder. Unfortunately, it's necessary to write the jl files out as an intermediary step, because they need to be able to find each other to resolve imports.
 Alternatively, you could write the clj files as jl files with the macro `@clj_str`, but that makes your whole file a string, which breaks most syntax highlighters, which can be annoying.
 
-I know that you're probably thinking "why?" and it was mostly a project for me to learn Julia and muck around with its internals. I learned quite a bit, so mission success! CLJS has self-hosting now, which means that they will hopefully have a js-only package soon. However, dealing with google closure compiler and leiningen's java/jvm dependencies are a larger problem to be solved, and until then, I still consider it unwieldy.
+I know that you're probably thinking "why?" and it was mostly a project for me to learn Julia and muck around with its internals. I learned quite a bit, so mission accomplished! CLJS has self-hosting now, which means that they will hopefully have a js-only package soon. However, dealing with google closure compiler and leiningen's java/jvm dependencies are a larger problem to be solved, and until then, I still consider it unwieldy, so there's still some practical use to
+be had here.
 
 Effectively, this is just the **reader** portion of implementing a lisp - Julia does everything else using its inbuilt mechanisms.
-
-## Side by Side Showoff
-
-<div style="display:flex; margin:0 auto; width: 80%; justify-content:space-between;">
-<div style="flex:1; padding-left:10%;">
-**Clojure-like**
-```clojure
-; nil, true, and false work as expected.
-nil
-true
-false
-
-; numbers - can be int or float
-; ints
-1
-; 16r means base 16
-16r1ef1346bafdc
-; can be any size, will use smallest fitting type for the int.
-12398130498712098741023497102349781203
-
-; float (as expected)
-3.4
-5.6e10
-
-```
-
-</div>
-<div style="flex:1; padding-left:10%;">
-**Julia**
-```julia
-# nothing, true and false in julia.
-nothing
-true
-false
-
-# numbers
-# int
-1
-# base 16 number is translated to base10 constant
-34021315424220
-# can be any size
-12398130498712098741023497102349781203
-
-# float
-3.4
-5.6e10
-
-```
-
-</div>
-</div>
 
 ## Syntax Overview
 
